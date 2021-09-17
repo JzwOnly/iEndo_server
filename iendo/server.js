@@ -5,7 +5,7 @@ var db = {};
 var config = {
   user: 'sa',
   password: 'LzJDzh19861207',
-  server: '192.168.1.10', 
+  server: '127.0.0.1', 
   database: 'cme_endo',
   port:1433,
   options: {

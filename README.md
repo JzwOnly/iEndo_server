@@ -5,22 +5,22 @@
 `npm install -g pm2`
 ## 3 安装pm2为windows-service
 `npm i -g pm2-windows-service`
-## 4 配置pm2环境变量
-右键 [我的电脑] - [属性] - [高级系统设置] - [环境变量] - 新建 [系统变量]    
-PM2_HOME=C:\Users\Administrator\.pm2（pm2安装路径，需要自己确认）
-## 5 配置windows-service
+## 4 配置windows-service
 `pm2-service-install`  
 提示 `Perform environment setup ?` 选 n, 继续
+## 5 配置pm2环境变量
+右键 [我的电脑] - [属性] - [高级系统设置] - [环境变量] - 新建 [系统变量]    
+PM2_HOME=C:\Users\Administrator\.pm2（pm2安装路径，需要自己确认）
 ## 6 确认PM2服务是否已经启动
 <kbd>Win</kbd>+<kbd>R</kbd> 输入`services.msc`  
 查看是否有 `PM2` 这个服务
 ## 7 安装项目依赖环境
-cd 到项目目录iendo
+cd 到项目目录iendo  
 `cd ..`  
 `cd D:\iendo`  
 `npm install --save`
 ## 8 启动项目
-`pm2 start process` (在项目目录)  
+`pm2 start process.json` (在项目目录)  
 如果报错`[PM2] Spawning PM2 daemon with pm2_home=C:\Users\admin\.pm2`  
 使用管理员运行CMD，cd到项目目录重复 `步骤8`
 ## 9 添加到自启动服务
