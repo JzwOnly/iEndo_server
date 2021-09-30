@@ -167,7 +167,7 @@ define({ "api": [
             "group": "Parameter",
             "type": "string",
             "optional": false,
-            "field": "CurrentUserName",
+            "field": "UserName",
             "description": "<p>当前用户名字</p>"
           },
           {
@@ -322,7 +322,7 @@ define({ "api": [
             "type": "string",
             "optional": false,
             "field": "CurrentRelo",
-            "description": "<p>当前用户</p>"
+            "description": "<p>当前权限</p>"
           }
         ]
       }

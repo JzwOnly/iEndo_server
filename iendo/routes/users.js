@@ -483,7 +483,7 @@ function createUserWithPurview(mCreateRelo, createUserID) {
  * @apiGroup User 
  * @apiParam {string} DeleteUserID 被修改用户ID
  * @apiParam {string} CurrentUserID 当前用户ID
- * @apiParam {string} CurrentRelo 当前用户
+ * @apiParam {string} CurrentRelo 当前权限
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  *  {
@@ -656,8 +656,8 @@ function getDeleteDataExist(mDeleteUserID) {
 * @apiGroup User 
 * @apiParam {string} CurrentUserID 当前登入的用户ID
 * @apiParam {string} ChangeUserID 需要被修改权限的用户ID
-* @apiParam {string} CurrentUserName 当前用户名字
-* @apiParam {string} Relo 需要被修改的用户权限等级
+* @apiParam {string} UserName 当前用户名字
+* @apiParam {string}  Relo 需要被修改的用户权限等级
 * @apiSuccess {json} result
 * @apiSuccessExample {json} Success-Response:
 *  {
