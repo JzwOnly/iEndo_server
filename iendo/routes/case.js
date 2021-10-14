@@ -536,8 +536,10 @@ router.post('/case/update', function(req, res, next) {
         try {
             // 更新 record_base
             yield __updateCase(params["ID"], caseObj);
-            // 更新 record_endoscopy_check
-            yield __updateCaseCheck(params["ID"], caseCheckObj)
+            if (params.ExaminingPhysician != null || params.ClinicalDiagnosis != null || params.CheckContent != null || params.CheckDiagnosis != null) {
+                // 更新 record_endoscopy_check
+                yield __updateCaseCheck(params["ID"], caseCheckObj)
+            }
             res.send(responseTool({}, repSuccess, repSuccessMsg))
         } catch(error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
