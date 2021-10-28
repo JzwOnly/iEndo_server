@@ -260,7 +260,7 @@ router.post('/users/changeElsePassword', function (req, res, next) {
  */
 router.get('/users/list', function (req, res, next) {
   //获取参数 
-  var sqlStr = 'select * from dbo.users;';
+  var sqlStr = 'select u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, p.* from dbo.users u, dbo.Purview p where u.UserID = p.UserID and u.CanUSE=1;';
   db.sql(sqlStr, function (err, result) {
     if (err) {
       res.send(responseTool({}, reqError, reqErrorMsg));
