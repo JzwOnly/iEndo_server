@@ -3,9 +3,8 @@ var router = express.Router();
 var db = require('../server');
 // var co = require('co')
 var co = require('co');
-const { responseTool, reqSuccess, reqSuccessMsg, reqError, reqErrorMsg } = require('../lib/responseData');
+const { responseTool, repSuccess, repSuccessMsg, repError, repErrorMsg } = require('../lib/responseData');
 const { sql } = require('../server');
-const { RequestError } = require('mssql');
 
 
 
@@ -36,27 +35,23 @@ router.post('/users/login', function (req, res, next) {
     var mPassword = req.body.Password;
     try {
       // 校验数据
-      yield getCheckData(mUserName, mPassword);
-      // 获取当前用户的ID
-      var userID = yield getCreateUserID(mUserName, mPassword);
-      // 获取当前用户的权限等级
-      var Role = yield getCurrentRole(userID);
-      var response = {
-        'code': 1,
-        'data': { "userID": userID, "Role": Role, },
-        'msg': 'OK',
+      let result = yield getCheckData(mUserName, mPassword);
+      if (result.result == false) {
+        res.send(responseTool({}, repError, result.msg))
+      } else {
+        var data = { "userID": result.userID, "Role": result.role };
+        res.send(responseTool(data, repSuccess, repSuccessMsg));
       }
-      res.send(response);
     } catch (error) {
-      res.send(responseTool({}, reqError, '登录失败'))
+      res.send(responseTool({}, repError, '登录失败'))
     }
   });
 });
 
-// 检查密码
+// 检查账号密码
 function getCheckData(mUserName,mPassword){
   return new Promise((resolve,reject)=>{
-    var sqlString = `select Password from  users where UserName='${mUserName}';`;
+    var sqlString = `select u.UserID, u.Password, p.Role, u.CanUSE from  dbo.Purview p, dbo.users u where u.UserName='${mUserName}' and u.UserID = p.UserID;`;
     db.sql(sqlString, function (err, result) {
       if (err) {
         console.log("登录========== OK", err);
@@ -67,11 +62,45 @@ function getCheckData(mUserName,mPassword){
         console.log("登录========== data", data);
         console.log("登录========== data[0]", data[0]["Password"]);
         console.log("登录========== mPassword", mPassword);
-        if(mPassword==data[0]["Password"]){
-          resolve(true);
-        }else{
-          reject(false);
+        var checkResult = {};
+        if (data.length > 0) {
+          // 校验密码是否正确
+          console.log(mPassword == data[0]["Password"])
+          if (mPassword == data[0]["Password"]) {
+            let UserID = data[0]["UserID"]
+            let Role = data[0]["Role"]
+            if (data[0]["CanUSE"] == 1) {
+              checkResult = {
+                "result": true,
+                "userID": UserID,
+                "role": Role,
+              }
+            } else {
+              checkResult = {
+                "result": false,
+                "msg": "账号未激活"
+              }
+            }
+            // CanUSE
+          } else {
+            checkResult = {
+              "result": false,
+              "msg": "密码错误"
+            }
+          }
+        } else {
+          // 账号不存在
+          checkResult = {
+            "result": false,
+            "msg": "账号不存在"
+          }
         }
+        resolve(checkResult);
+        // if(mPassword==data[0]["Password"]){
+        //   resolve(true);
+        // }else{
+        //   reject(false);
+        // }
         // // responseTool(data, repSuccess, repSuccessMsg)
         
         // resolve(data);
@@ -122,13 +151,13 @@ router.post('/users/changeMyselfPassword', function (req, res, next) {
       yield setNewPassword(mUserID, mNewPassword)
       var response = {
         // userID   Relo
-        'code': 1,
+        'code': repSuccess,
         'data': "OK",
         'msg': 'OK',
       }
       res.send(response);
     } else {
-      res.send(responseTool({}, reqError, '原密码不正确'))
+      res.send(responseTool({}, repError, '原密码不正确'))
     }
   });
 
@@ -214,7 +243,7 @@ router.post('/users/changeElsePassword', function (req, res, next) {
     var mChangedUserRelo = req.body.changedUserRelo;
     var mChangedPassword = req.body.changedPassword;
     var response = {
-      'code': 1,
+      'code': repSuccess,
       'data': "OK",
       'msg': 'OK',
     }
@@ -230,10 +259,10 @@ router.post('/users/changeElsePassword', function (req, res, next) {
         yield setNewPassword(mChangedUserID, mChangedPassword);
         res.send(response);
       } else {
-        res.send(responseTool({}, reqError, "没有修改权限~"));
+        res.send(responseTool({}, repError, "没有修改权限~"));
       }
     } else {//没有权限用户
-      res.send(responseTool({}, reqError, "没有修改权限~"));
+      res.send(responseTool({}, repError, "没有修改权限~"));
     }
   });
 });
@@ -263,13 +292,13 @@ router.get('/users/list', function (req, res, next) {
   var sqlStr = 'select u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, p.* from dbo.users u, dbo.Purview p where u.UserID = p.UserID and u.CanUSE=1;';
   db.sql(sqlStr, function (err, result) {
     if (err) {
-      res.send(responseTool({}, reqError, reqErrorMsg));
+      res.send(responseTool({}, repError, repErrorMsg));
       return;
     } else {
       var data = result['recordset']
       // responseTool(data, repSuccess, repSuccessMsg)
       var response = {
-        'code': 1,
+        'code': repSuccess,
         'data': data,
         'msg': 'OK',
       }
@@ -314,7 +343,7 @@ router.post('/users/createUser', function (req, res, next) {
   var mDes = req.body.Des;
   var mCanSUE = req.body.CanSUE;
   var response = {
-    'code': 1,
+    'code': repSuccess,
     'data': 'ok',
     'msg': '请求成功',
   }
@@ -334,20 +363,20 @@ router.post('/users/createUser', function (req, res, next) {
         // 添加相关联的权限表格
 
       } else if (0 == mCreateRelo) { //超级管理员有且唯一
-        res.send(responseTool({}, reqError, "超级管理员有且唯一"));
+        res.send(responseTool({}, repError, "超级管理员有且唯一"));
         return;
       } else {
-        res.send(responseTool({}, reqError, "未知错误"));
+        res.send(responseTool({}, repError, "未知错误"));
       }
 
 
 
     } else {
-      res.send(responseTool({}, reqError, reqErrorMsg));
+      res.send(responseTool({}, repError, repErrorMsg));
     }
   }
     //   catch (error) {
-    //   res.send(responseTool({}, reqError, "参数错误"))
+    //   res.send(responseTool({}, repError, "参数错误"))
     //   return
     // }
 
@@ -515,7 +544,7 @@ router.post('/users/deleteUserById', function (req, res, next) {
       if (mExist && mExistCurrent) {
         //自己不能删除自己
         if (mDeleteUserID == 1) { //超级用户不能被删除
-          res.send(responseTool({}, reqError, '超级用户不能被删除'))
+          res.send(responseTool({}, repError, '超级用户不能被删除'))
           return
         }
         if (nCurrentRelo == 0) {//超级管理员   
@@ -526,20 +555,20 @@ router.post('/users/deleteUserById', function (req, res, next) {
             var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
             if (deleteStatue && deleteStatueWithPurview) {
               var response = {
-                'code': 1,
+                'code': repSuccess,
                 'data': { data: 'ok' },
                 'msg': '请求成功'
               }
               res.send(response)
             } else {
-              res.send(responseTool({}, reqError, '超级管理员，删除错误'))
+              res.send(responseTool({}, repError, '超级管理员，删除错误'))
             }
           } else {
-            res.send(responseTool({}, reqError, '自己不能删除自己'))
+            res.send(responseTool({}, repError, '自己不能删除自己'))
           }
         } else if (nCurrentRelo == 1) {//管理员，自己不能删除自己
           if (mCurrentUserID == mDeleteUserID) {
-            res.send(responseTool({}, reqError, '自己不能删除自己'))
+            res.send(responseTool({}, repError, '自己不能删除自己'))
           } else if (mDeleteUserID > 1) {
             //删除用户
             var deleteStatue = yield deleteUserById(mDeleteUserID)
@@ -547,29 +576,29 @@ router.post('/users/deleteUserById', function (req, res, next) {
             var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
             if (deleteStatue) {
               var response = {
-                'code': 1,
+                'code': repSuccess,
                 'data': { data: 'ok' },
                 'msg': '请求成功'
               }
               res.send(response)
             } else {
-              res.send(responseTool({}, reqError, '管理员，删除错误'))
+              res.send(responseTool({}, repError, '管理员，删除错误'))
             }
           }
         } else {
-          res.send(responseTool({}, reqError, '不具备删除权限'))
+          res.send(responseTool({}, repError, '不具备删除权限'))
         }
 
         var response = {
-          'code': 1,
+          'code': repSuccess,
           'data': { data: 'ok' },
           'msg': '请求成功'
         }
       } else {
-        res.send(responseTool({}, reqError, '请求参数错误'))
+        res.send(responseTool({}, repError, '请求参数错误'))
       }
     } catch (error) {
-      res.send(responseTool({}, reqError, "参数错误"))
+      res.send(responseTool({}, repError, "参数错误"))
     }
 
   })
@@ -693,29 +722,29 @@ router.post('/users/changePurview', function (req, res, nest) {
           // 修改权限
           var changeRelostatue = yield setChangeRole(ChangeUserID, Relo);
           var response = {
-            'code': 1,
+            'code': repSuccess,
             'data': { data: 'ok' },
             'msg': '请求成功',
           }
           res.send(response)
         } else {
-          res.send(responseTool({}, reqError, "参数错误D"))
+          res.send(responseTool({}, repError, "参数错误D"))
 
         }
 
       } else {
-        res.send(responseTool({}, reqError, "参数错误C"))
+        res.send(responseTool({}, repError, "参数错误C"))
       }
 
       if (null != useridIfEexist) {  //存在
         // res.send(responseTool({}, repError, "参数错误"))
       } else {//不存在
         console.log("changePurview==被修改用户ID==不存在", useridIfEexist);
-        res.send(responseTool({}, reqError, "参数错误B"))
+        res.send(responseTool({}, repError, "参数错误B"))
         return
       }
     } catch (error) {
-      res.send(responseTool({}, reqError, "参数错误A"))
+      res.send(responseTool({}, repError, "参数错误A"))
     }
   })
   // select userID,UserName from  users where UserID='111';
@@ -814,7 +843,7 @@ function getReadUseridIfExist(ChangeUserID) {
 //   try{
 
 //   }catch(error){
-//     res.send(responseTool({}, reqError, "参数错误"))
+//     res.send(responseTool({}, repError, "参数错误"))
 //   }
 
 // })
