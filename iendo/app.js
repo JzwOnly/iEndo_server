@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var fs = require('fs')
+var ini = require('ini')
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -19,6 +21,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// 加载设备图片和视频静态文件
+var config = ini.parse(fs.readFileSync('./deviceConfig.ini', 'utf-8'));
+app.use(express.static(config.imagesPath));
+app.use(express.static(config.videosPath));
 
 app.use('/', indexRouter);
 app.use('/', usersRouter);

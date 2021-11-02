@@ -912,6 +912,104 @@ define({ "api": [
     "groupTitle": "病例（Case）"
   },
   {
+    "type": "get",
+    "url": "/case/caseimages",
+    "title": "1.9 病例图片",
+    "description": "<p>病例图片</p>",
+    "name": "caseimages",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "ID",
+            "description": "<p>内部ID</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": [{image}],\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/caseimages?ID=10"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "get",
+    "url": "/case/casevideos",
+    "title": "1.9 病例视频",
+    "description": "<p>病例视频</p>",
+    "name": "casevideos",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "ID",
+            "description": "<p>内部ID</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": [{video}],\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/casevideos?ID=10"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
     "type": "post",
     "url": "/case/delete",
     "title": "1.7 删除病例",

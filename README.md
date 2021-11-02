@@ -20,24 +20,27 @@ cd 到项目目录iendo
 `cd D:\iendo`  
 `npm install --save`
 ##### windows7 由于node版本较低，在安装依赖 `npm install --save`  
-会出现警告 `found x vulnerabilities(xxx)`
-执行`npm audit fix` 进行修复
-## 8 启动项目
+会出现警告 `found x vulnerabilities(xxx)`  
+执行`npm audit fix` 进行修复  
+## 8 设置静态资源目录
+打开项目下deviceConfig.ini文件
+修改imagesPath、videosPath 不同设备路径不同，一体机和耳鼻喉有相应的文件夹路径
+## 9 启动项目
 `pm2 start process.json` (在项目目录)  
 如果报错`[PM2] Spawning PM2 daemon with pm2_home=C:\Users\admin\.pm2`  
 使用管理员运行CMD，cd到项目目录重复 `步骤8`
-## 9 添加到自启动服务
+## 10 添加到自启动服务
 `pm2 save`
-## 10 pm2日志分割
+## 11 pm2日志分割
 使用管理员运行CMD  
 `pm2 install pm2-logrotate`
 `pm2 set pm2-logrotate:retain 50` // 超过50个就自动删除
-## 11 确认项目正常启动
+## 12 确认项目正常启动
 打开浏览器输入 http://localhost:3000  
 出现welcome to IEndo 说明启动成功
-## 12 验证开机自启动
+## 13 验证开机自启动
 关闭设备，重新启动，重复 `步骤10`
-## 13 重启之后项目未启动
+## 14 重启之后项目未启动
 `pm2 delete iendo`  
 `pm2 update`  
 `pm2 start process.json`(在项目目录)  

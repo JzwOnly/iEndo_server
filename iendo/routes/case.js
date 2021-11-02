@@ -106,7 +106,8 @@ router.get('/case/search', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseSearchSchema, params)
     if (!schemaResult.result) {
-        res.status(400).json(schemaResult.errors)
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
         return;
     }
     var caseSearchObj = {
@@ -322,7 +323,8 @@ router.post('/case/add', function(req, res, next) {
     console.log(params)
     const schemaResult = validateJson(caseSchema('add'), params)
     if (!schemaResult.result) {
-        res.status(400).json(schemaResult.errors)
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
         return;
     }
     var caseObj = {
@@ -475,7 +477,8 @@ router.post('/case/update', function(req, res, next) {
     var params = req.body;
     const schemaResult = validateJson(caseSchema('update'), params)
     if (!schemaResult.result) {
-        res.status(400).json(schemaResult.errors)
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
         return;
     }
     var caseObj = {
@@ -570,7 +573,8 @@ router.post('/case/update', function(req, res, next) {
     var params = req.body
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.status(400).json(schemaResult.errors)
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
         return;
     }
     co(function *(){
@@ -609,7 +613,8 @@ router.post('/case/update', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.status(400).json(schemaResult.errors)
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
         return;
     }
     co(function *(){
@@ -619,13 +624,13 @@ router.post('/case/update', function(req, res, next) {
             if (caseInfo == null) {
                 res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
             }
-            // 查询图片
-            let images = yield __getImages(params["ID"]);
-            // 查询视频
-            let videos = yield __getVideos(params["ID"]);
+            // // 查询图片
+            // let images = yield __getImages(params["ID"]);
+            // // 查询视频
+            // let videos = yield __getVideos(params["ID"]);
             var data = {
-                imagelist: images,
-                videolist: videos,
+                // imagelist: images,
+                // videolist: videos,
                 ...caseInfo
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
@@ -634,7 +639,81 @@ router.post('/case/update', function(req, res, next) {
         }
     })
 });
+// #region 病例图片
+/**
+ * @api {get} /case/caseimages 1.9 病例图片
+ * @apiDescription 病例图片
+ * @apiName caseimages
+ * @apiGroup 病例（Case）
+ * @apiParam {int} ID 内部ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [{image}],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/caseimages?ID=10
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/caseImages', function(req, res, next) {
+    var params = req.query || req.params
+    const schemaResult = validateJson(caseInfoSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    co(function *(){
+        try {
+            // 查询图片
+            let images = yield __getImages(params["ID"]);
+            var data = images;
+            res.send(responseTool(data, repSuccess, repSuccessMsg))
+        } catch(error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+});
 
+// #region 病例视频
+/**
+ * @api {get} /case/casevideos 1.9 病例视频
+ * @apiDescription 病例视频
+ * @apiName casevideos
+ * @apiGroup 病例（Case）
+ * @apiParam {int} ID 内部ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [{video}],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/casevideos?ID=10
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/casevideos', function(req, res, next) {
+    var params = req.query || req.params
+    const schemaResult = validateJson(caseInfoSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    co(function *(){
+        try {
+            // 查询视频
+            let videos = yield __getVideos(params["ID"]);
+            var data = videos;
+            res.send(responseTool(data, repSuccess, repSuccessMsg))
+        } catch(error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+});
 
 // Private Function
 // 新增时获取病例编号
