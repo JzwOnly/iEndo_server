@@ -469,13 +469,6 @@
             "group": "Parameter",
             "type": "string",
             "optional": false,
-            "field": "CaseNo",
-            "description": "<p>病历编号</p>"
-          },
-          {
-            "group": "Parameter",
-            "type": "string",
-            "optional": false,
             "field": "UserName",
             "description": "<p>操作员用户名</p>"
           },
@@ -869,42 +862,6 @@
     "sampleRequest": [
       {
         "url": "http://localhost:3000/case/caseInfo?ID=10"
-      }
-    ],
-    "version": "1.0.0",
-    "filename": "routes/case.js",
-    "groupTitle": "病例（Case）"
-  },
-  {
-    "type": "get",
-    "url": "/case/caseNo",
-    "title": "1.3 病例编号",
-    "description": "<p>病例编号，用于新增病例</p>",
-    "name": "caseNo",
-    "group": "病例（Case）",
-    "success": {
-      "fields": {
-        "Success 200": [
-          {
-            "group": "Success 200",
-            "type": "json",
-            "optional": false,
-            "field": "result",
-            "description": ""
-          }
-        ]
-      },
-      "examples": [
-        {
-          "title": "Success-Response:",
-          "content": "{\n     \"code\": 0,\n     \"data\": {\"CaseNo\": \"xxxxxxxxx\"},\n     \"msg\": \"\"\n}",
-          "type": "json"
-        }
-      ]
-    },
-    "sampleRequest": [
-      {
-        "url": "http://localhost:3000/case/caseNo"
       }
     ],
     "version": "1.0.0",

@@ -31,7 +31,7 @@ const caseSchema = function(type) {
             DOB: {type: "string", maxLength:50}, // 生日
             PatientAge: {type: ["integer", "string"]}, // 患者年龄
             AgeUnit: {type: "string", maxLength:10}, // 年龄单位
-            CaseNo: {type: "string", maxLength:20}, // 检查号
+            // CaseNo: {type: "string", maxLength:20}, // 检查号
             ReturnVisit: {type: ["boolean", "string"]}, // 初复诊
             BedID: {type: "string", maxLength:10}, // 病床号
             WardID: {type: "string", maxLength:20}, // 病区号
@@ -62,7 +62,8 @@ const caseSchema = function(type) {
             CheckContent: {type: "string"}, // 检查内容（镜检所见）
             CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
         },
-        required: ["Name", "CaseNo", "UserName", "EndoType"],
+        // required: ["Name", "CaseNo", "UserName", "EndoType"],
+        required: ["Name", "UserName", "EndoType"],
         additionalProperties: false,
     };
     if (type == 'update') {

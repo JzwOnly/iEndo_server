@@ -192,35 +192,6 @@ router.get('/case/search', function(req, res, next) {
 });
 
 
-// #region 病例编号
-/**
- * @api {get} /case/caseNo 1.3 病例编号
- * @apiDescription 病例编号，用于新增病例
- * @apiName caseNo
- * @apiGroup 病例（Case）
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- * {
- *      "code": 0,
- *      "data": {"CaseNo": "xxxxxxxxx"},
- *      "msg": ""
- * }
- * @apiSampleRequest http://localhost:3000/case/caseNo
- * @apiVersion 1.0.0
- */
-// #endregion
-router.get('/case/caseNo', function(req, res, next) {
-    co(function *(){
-        try {
-            var caseNo = yield __getCaseNoReq();
-            res.send(responseTool({"CaseNo": caseNo}, repSuccess, repSuccessMsg))
-        } catch(error) {
-            res.send(responseTool({}, repError, repParamsErrorMsg))
-        }
-    })
-});
-
-
 // #region 病例数据字典
 /**
  * @api {get} /case/listDicts 1.4 病例数据字典
@@ -259,7 +230,6 @@ router.get('/case/listDicts', function(req, res, next) {
  * @apiName add
  * @apiGroup 病例（Case）
  * @apiParam {string} Name 姓名
- * @apiParam {string} CaseNo 病历编号
  * @apiParam {string} UserName 操作员用户名
  * @apiParam {int} EndoType 工作站类型
  * @apiParam {string} [Married] 婚否 （已婚，未婚）
@@ -348,7 +318,7 @@ router.post('/case/add', function(req, res, next) {
         DOB: params.DOB,
         PatientAge: params.PatientAge,
         AgeUnit: params.AgeUnit,
-        CaseNo: params.CaseNo,
+        // CaseNo: params.CaseNo,
         ReturnVisit: params.ReturnVisit,
         BedID: params.BedID,
         WardID: params.WardID,
@@ -387,6 +357,9 @@ router.post('/case/add', function(req, res, next) {
     }
     co(function *(){
         try {
+            // 获取病历编号
+            var caseNo = yield __getCaseNoReq();
+            caseObj["CaseNo"] = caseNo;
             // 新增 record_base
             const ID = yield __addCase(caseObj);
             if (ID == null) {
@@ -624,13 +597,10 @@ router.post('/case/update', function(req, res, next) {
             if (caseInfo == null) {
                 res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
             }
-            // // 查询图片
-            // let images = yield __getImages(params["ID"]);
-            // // 查询视频
-            // let videos = yield __getVideos(params["ID"]);
+            // // 查询图片和视频数量
+            let count = yield __getImagesAndVideosCount(params["ID"]);
             var data = {
-                // imagelist: images,
-                // videolist: videos,
+                ...count,
                 ...caseInfo
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
@@ -961,6 +931,19 @@ function __getVideos(caseID) {
                 return
             }
             resolve(result['recordset'])
+        });
+    })
+}
+// 获取视频和图片数量
+function __getImagesAndVideosCount(caseID) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select (select COUNT(*) from images_of_record where RecordID = ${caseID}) imagesCount, (select COUNT(*) from video_archive where RecordID = ${caseID}) videosCount;`;
+        db.sql(sqlStr, function(err, result){
+            if(err) {
+                reject(err)
+                return
+            }
+            resolve(result['recordset'][0])
         });
     })
 }
