@@ -106,8 +106,9 @@ const caseSearchSchema = {
         CheckContent: {type: "string"}, // 检查内容（镜检所见）
         CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
         Advice: {type: "string", maxLength:200}, // 建议
+        EndoType: { type: "string" }, // 工作站类型
     },
-    required: [],
+    required: ["EndoType"],
     additionalProperties: false,
 }
 module.exports = {

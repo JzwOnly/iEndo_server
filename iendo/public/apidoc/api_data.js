@@ -1029,6 +1029,13 @@ define({ "api": [
             "group": "Parameter",
             "type": "string",
             "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
             "field": "datetime",
             "description": "<p>（YYYY-MM-DD） 日期</p>"
           }
@@ -1071,6 +1078,19 @@ define({ "api": [
     "description": "<p>病例数据字典</p>",
     "name": "listDicts",
     "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          }
+        ]
+      }
+    },
     "success": {
       "fields": {
         "Success 200": [
@@ -1104,12 +1124,19 @@ define({ "api": [
     "type": "get",
     "url": "/case/search",
     "title": "1.2 病例搜索",
-    "description": "<p>病例搜索</p>",
+    "description": "<p>病例搜索</br><text style=\"color:\t#EA0000\">特别说明：如果某个字段查询全部或不进行筛选有两种传值方式</br>1. 不传该字段</br>2. 传 “全部”</text></p>",
     "name": "search",
     "group": "病例（Case）",
     "parameter": {
       "fields": {
         "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          },
           {
             "group": "Parameter",
             "type": "string",

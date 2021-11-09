@@ -13,7 +13,8 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  * @apiDescription 病例列表
  * @apiName list
  * @apiGroup 病例（Case）
- * @apiParam {string} datetime（YYYY-MM-DD） 日期
+ * @apiParam {string} EndoType 工作站类型
+ * @apiParam {string} [datetime]（YYYY-MM-DD） 日期
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -27,7 +28,22 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
 // #endregion
 router.get('/case/list', function(req, res, next) {
     var param = req.query || req.params;
+    const caselistSchema = {
+        type: "object",
+        properties: {
+            datetime: { type: "string" }, // 日期
+            EndoType: { type: "string" }, // 工作站类型
+        },
+        required: ["EndoType"],
+        additionalProperties: false,
+    }
     console.log(param)
+    const schemaResult = validateJson(caselistSchema, param)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
     // 默认取当天时间
     // var datetime = 
     var nowDate = moment()
@@ -51,7 +67,7 @@ router.get('/case/list', function(req, res, next) {
     dbo.record_endoscopy_check rec 
     where 
     rb.RecordDate between '${nowDate.format("YYYY-MM-DD")}' and '${tomoDate.format("YYYY-MM-DD")}' 
-    and rb.ID = rec.ID;`
+    and rb.ID = rec.ID and EndoType=${param.EndoType};`
     db.sql(sqlStr, function(err, result){
         if(err) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
@@ -65,9 +81,10 @@ router.get('/case/list', function(req, res, next) {
 // #region 病例搜索
 /**
  * @api {get} /case/search 1.2 病例搜索
- * @apiDescription 病例搜索
+ * @apiDescription 病例搜索</br></br><text style="color:#EA0000">特别说明：如果某个字段查询全部或不进行筛选有两种传值方式</br>1. 不传该字段</br>2. 传 “全部”</text>
  * @apiName search
  * @apiGroup 病例（Case）
+ * @apiParam {string} EndoType 工作站类型
  * @apiParam {string} [CheckDateStart] 检查日期开始 （YYYY-MM-DD）
  * @apiParam {string} [CheckDateEnd] 检查日期结束 （YYYY-MM-DD）
  * @apiParam {string} [CaseNo] 检查号
@@ -106,7 +123,7 @@ router.get('/case/search', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseSearchSchema, params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
@@ -181,7 +198,7 @@ router.get('/case/search', function(req, res, next) {
     from 
     dbo.record_base rb, 
     dbo.record_endoscopy_check rec 
-    where ${condiStr};` 
+    where ${condiStr} and EndoType=${params.EndoType};` 
     db.sql(sqlStr, function(err, result){
         if(err) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
@@ -198,6 +215,7 @@ router.get('/case/search', function(req, res, next) {
  * @apiDescription 病例数据字典
  * @apiName listDicts
  * @apiGroup 病例（Case）
+ * @apiParam {string} [EndoType] 工作站类型
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -293,12 +311,12 @@ router.post('/case/add', function(req, res, next) {
     console.log(params)
     const schemaResult = validateJson(caseSchema('add'), params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
     var caseObj = {
-        RecordType: "endoscopy_check",
+        // RecordType: "endoscopy_check",
         PatientID: 0,
         Name: params.Name,
         Married: params.Married,
@@ -346,9 +364,13 @@ router.post('/case/add', function(req, res, next) {
         EndoType: params.EndoType,
     }
     // 判断工作站类型
-    // if (Number(params["EndoType"]) == 3) {
-    //     caseObj["RecordType"] = "endoscopy_check";
-    // }
+    if (Number(params["EndoType"]) == 3) {
+        caseObj["RecordType"] = "endoscopy_check";
+    }
+    // 添加年龄单位默认值
+    if (params["AgeUnit"] == "" || params["AgeUnit"] == null) {
+        caseObj["AgeUnit"] = "岁"
+    }
     var caseCheckObj = {
         ExaminingPhysician: params.ExaminingPhysician,
         ClinicalDiagnosis: params.ClinicalDiagnosis,
@@ -450,12 +472,11 @@ router.post('/case/update', function(req, res, next) {
     var params = req.body;
     const schemaResult = validateJson(caseSchema('update'), params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
     var caseObj = {
-        RecordType: "endoscopy_check",
         PatientID: 0,
         Name: params.Name,
         Married: params.Married,
@@ -502,6 +523,10 @@ router.post('/case/update', function(req, res, next) {
         UserName: params.UserName,
         EndoType: params.EndoType,
     }
+    // 判断工作站类型
+    if (Number(params["EndoType"]) == 3) {
+        caseObj["RecordType"] = "endoscopy_check";
+    }
     var caseCheckObj = {
         ExaminingPhysician: params.ExaminingPhysician,
         ClinicalDiagnosis: params.ClinicalDiagnosis,
@@ -546,7 +571,7 @@ router.post('/case/update', function(req, res, next) {
     var params = req.body
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
@@ -586,7 +611,7 @@ router.post('/case/update', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
@@ -631,7 +656,7 @@ router.get('/case/caseImages', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
@@ -669,7 +694,7 @@ router.get('/case/casevideos', function(req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
-        res.send(responseTool({}, repError, schemaResult.errors[0]["message"]))
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
         return;
     }
