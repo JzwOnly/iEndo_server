@@ -124,7 +124,7 @@ function getCheckData(mUserName,mPassword){
  * @apiDescription 修改密码
  * @apiName changePassword
  * @apiGroup User 
- * @apiParam {string} userId 自己的ID
+ * @apiParam {string} UserID 自己的ID
  * @apiParam {string} oldPassword 原来的密码
  * @apiParam {string} newPassword 原来的密码
  * @apiSuccess {json} result
@@ -149,13 +149,7 @@ router.post('/users/changeMyselfPassword', function (req, res, next) {
     if (mOldPasswordStatue == mOldPassword) {
       //修改密码
       yield setNewPassword(mUserID, mNewPassword)
-      var response = {
-        // userID   Relo
-        'code': repSuccess,
-        'data': "OK",
-        'msg': 'OK',
-      }
-      res.send(response);
+      res.send(responseTool({}, repSuccess, repSuccessMsg))
     } else {
       res.send(responseTool({}, repError, '原密码不正确'))
     }
@@ -242,22 +236,17 @@ router.post('/users/changeElsePassword', function (req, res, next) {
     var mUserRelo = req.body.userRelo;
     var mChangedUserRelo = req.body.changedUserRelo;
     var mChangedPassword = req.body.changedPassword;
-    var response = {
-      'code': repSuccess,
-      'data': "OK",
-      'msg': 'OK',
-    }
     //只有超级管理员和管理员可以修改其他人密码的权限--- 0超级管理员 1管理员  2操作员 3 查询员
     console.log("V========== 开始", mUserRelo, mChangedUserRelo);
     if (mUserRelo == 0) {  //超级管理员
       //修改密码
       yield setNewPassword(mChangedUserID, mChangedPassword);
-      res.send(response);
+      res.send(responseTool({}, repSuccess, repSuccessMsg));
     } else if (mUserRelo == 1) {//管理员
       if (mUserRelo == mChangedUserRelo) {
         //修改密码
         yield setNewPassword(mChangedUserID, mChangedPassword);
-        res.send(response);
+        res.send(responseTool({}, repSuccess, repSuccessMsg));
       } else {
         res.send(responseTool({}, repError, "没有修改权限~"));
       }
@@ -297,12 +286,7 @@ router.get('/users/list', function (req, res, next) {
     } else {
       var data = result['recordset']
       // responseTool(data, repSuccess, repSuccessMsg)
-      var response = {
-        'code': repSuccess,
-        'data': data,
-        'msg': 'OK',
-      }
-      res.send(response);
+      res.send(responseTool(data, repSuccess, repSuccessMsg))
     }
   });
 
@@ -342,11 +326,6 @@ router.post('/users/createUser', function (req, res, next) {
   var mPassword = req.body.Password;
   var mDes = req.body.Des;
   var mCanSUE = req.body.CanSUE;
-  var response = {
-    'code': repSuccess,
-    'data': 'ok',
-    'msg': '请求成功',
-  }
 
   co(function* () {
     // try{
@@ -358,8 +337,7 @@ router.post('/users/createUser', function (req, res, next) {
         var createUserID = yield getCreateUserID(mUserName, mPassword);
         yield createUserWithPurview(mCreateRelo, createUserID);
         console.log("添加相关联的权限表格===添加相关联的权限表格=======OK=======");
-
-        res.send(response);
+        res.send(responseTool({}, repSuccess, repSuccessMsg))
         // 添加相关联的权限表格
 
       } else if (0 == mCreateRelo) { //超级管理员有且唯一
@@ -554,12 +532,7 @@ router.post('/users/deleteUserById', function (req, res, next) {
             //删除用户所关联的权限表格 
             var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
             if (deleteStatue && deleteStatueWithPurview) {
-              var response = {
-                'code': repSuccess,
-                'data': { data: 'ok' },
-                'msg': '请求成功'
-              }
-              res.send(response)
+              res.send(responseTool({}, repSuccess, repSuccessMsg))
             } else {
               res.send(responseTool({}, repError, '超级管理员，删除错误'))
             }
@@ -575,24 +548,13 @@ router.post('/users/deleteUserById', function (req, res, next) {
             //删除用户所关联的权限表格 
             var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
             if (deleteStatue) {
-              var response = {
-                'code': repSuccess,
-                'data': { data: 'ok' },
-                'msg': '请求成功'
-              }
-              res.send(response)
+              res.send(responseTool({}, repSuccess, repSuccessMsg))
             } else {
               res.send(responseTool({}, repError, '管理员，删除错误'))
             }
           }
         } else {
           res.send(responseTool({}, repError, '不具备删除权限'))
-        }
-
-        var response = {
-          'code': repSuccess,
-          'data': { data: 'ok' },
-          'msg': '请求成功'
         }
       } else {
         res.send(responseTool({}, repError, '请求参数错误'))
@@ -721,12 +683,7 @@ router.post('/users/changePurview', function (req, res, nest) {
         if (currentRelostatue == 0) {//超级用户
           // 修改权限
           var changeRelostatue = yield setChangeRole(ChangeUserID, Relo);
-          var response = {
-            'code': repSuccess,
-            'data': { data: 'ok' },
-            'msg': '请求成功',
-          }
-          res.send(response)
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
         } else {
           res.send(responseTool({}, repError, "参数错误D"))
 
