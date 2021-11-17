@@ -90,7 +90,7 @@
             "group": "Parameter",
             "type": "string",
             "optional": false,
-            "field": "userId",
+            "field": "UserID",
             "description": "<p>自己的ID</p>"
           },
           {
@@ -1124,7 +1124,7 @@
     "type": "get",
     "url": "/case/search",
     "title": "1.2 病例搜索",
-    "description": "<p>病例搜索</br><text style=\"color:\t#EA0000\">特别说明：如果某个字段查询全部或不进行筛选有两种传值方式</br>1. 不传该字段</br>2. 传 “全部”</text></p>",
+    "description": "<p>病例搜索</br></br><text style=\"color:#EA0000\">特别说明：如果某个字段查询全部或不进行筛选有两种传值方式</br>1. 不传该字段</br>2. 传 “全部”</text></p>",
     "name": "search",
     "group": "病例（Case）",
     "parameter": {
