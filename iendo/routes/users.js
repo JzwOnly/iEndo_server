@@ -238,11 +238,11 @@ router.post('/users/changeElsePassword', function (req, res, next) {
     var mChangedPassword = req.body.changedPassword;
     //只有超级管理员和管理员可以修改其他人密码的权限--- 0超级管理员 1管理员  2操作员 3 查询员
     console.log("V========== 开始", mUserRelo, mChangedUserRelo);
-    if (mUserRelo == 0) {  //超级管理员
+    if (parseInt(mUserRelo) == 0) {  //超级管理员
       //修改密码
       yield setNewPassword(mChangedUserID, mChangedPassword);
       res.send(responseTool({}, repSuccess, repSuccessMsg));
-    } else if (mUserRelo == 1) {//管理员
+    } else if (parseInt(mUserRelo) == 1) {//管理员
       if (mUserRelo == mChangedUserRelo) {
         //修改密码
         yield setNewPassword(mChangedUserID, mChangedPassword);
@@ -329,9 +329,9 @@ router.post('/users/createUser', function (req, res, next) {
 
   co(function* () {
     // try{
-    if (0 == mCurrentRelo || 1 == mCurrentRelo) {
+    if (0 == parseInt(mCurrentRelo) || 1 == parseInt(mCurrentRelo)) {
 
-      if (mCreateRelo >= 1 || mCreateRelo <= 3) {
+      if (parseInt(mCreateRelo) >= 1 || parseInt(mCreateRelo) <= 3) {
         // 添加用户表格
         yield createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE);
         var createUserID = yield getCreateUserID(mUserName, mPassword);
@@ -521,11 +521,11 @@ router.post('/users/deleteUserById', function (req, res, next) {
       console.log("mDeletedRole=====" + mDeletedRole)
       if (mExist && mExistCurrent) {
         //自己不能删除自己
-        if (mDeleteUserID == 1) { //超级用户不能被删除
+        if (parseInt(mDeleteUserID) == 1) { //超级用户不能被删除
           res.send(responseTool({}, repError, '超级用户不能被删除'))
           return
         }
-        if (nCurrentRelo == 0) {//超级管理员   
+        if (parseInt(nCurrentRelo) == 0) {//超级管理员   
           if (mCurrentUserID != mDeleteUserID) {
             //删除用户
             var deleteStatue = yield deleteUserById(mDeleteUserID)
@@ -539,10 +539,10 @@ router.post('/users/deleteUserById', function (req, res, next) {
           } else {
             res.send(responseTool({}, repError, '自己不能删除自己'))
           }
-        } else if (nCurrentRelo == 1) {//管理员，自己不能删除自己
+        } else if (parseInt(nCurrentRelo) == 1) {//管理员，自己不能删除自己
           if (mCurrentUserID == mDeleteUserID) {
             res.send(responseTool({}, repError, '自己不能删除自己'))
-          } else if (mDeleteUserID > 1) {
+          } else if (parseInt(mDeleteUserID) > 1) {
             //删除用户
             var deleteStatue = yield deleteUserById(mDeleteUserID)
             //删除用户所关联的权限表格 
