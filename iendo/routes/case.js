@@ -3,7 +3,12 @@ var router = express.Router();
 var db = require('../server');
 var moment = require('moment');
 var co = require('co');
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema } = require('../lib/schema');
+const fs = require('fs');
+var path = require('path');
+var ini = require('ini');
+const multer = require('multer');
+const upload = multer({ dest: 'public/images' })
+const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -26,7 +31,7 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  * @apiVersion 1.0.0
  */
 // #endregion
-router.get('/case/list', function(req, res, next) {
+router.get('/case/list', function (req, res, next) {
     var param = req.query || req.params;
     const caselistSchema = {
         type: "object",
@@ -50,7 +55,7 @@ router.get('/case/list', function(req, res, next) {
     var tomoDate = moment().add(1, "days")
     if (param.hasOwnProperty('datetime')) {
         console.log('时间是否合法', moment(param['datetime'], "YYYY-MM-DD").isValid())
-        if (!moment(param['datetime'], "YYYY-MM-DD").isValid()){
+        if (!moment(param['datetime'], "YYYY-MM-DD").isValid()) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
         }
         nowDate = moment(param['datetime'], "YYYY-MM-DD");
@@ -68,8 +73,8 @@ router.get('/case/list', function(req, res, next) {
     where 
     rb.RecordDate between '${nowDate.format("YYYY-MM-DD")}' and '${tomoDate.format("YYYY-MM-DD")}' 
     and rb.ID = rec.ID and EndoType=${param.EndoType};`
-    db.sql(sqlStr, function(err, result){
-        if(err) {
+    db.sql(sqlStr, function (err, result) {
+        if (err) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
             return
         }
@@ -119,7 +124,7 @@ router.get('/case/list', function(req, res, next) {
  * @apiVersion 1.0.0 
 */
 // #endregion
-router.get('/case/search', function(req, res, next) {
+router.get('/case/search', function (req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseSearchSchema, params)
     if (!schemaResult.result) {
@@ -198,9 +203,9 @@ router.get('/case/search', function(req, res, next) {
     from 
     dbo.record_base rb, 
     dbo.record_endoscopy_check rec 
-    where ${condiStr} and EndoType=${params.EndoType};` 
-    db.sql(sqlStr, function(err, result){
-        if(err) {
+    where ${condiStr} and EndoType=${params.EndoType};`
+    db.sql(sqlStr, function (err, result) {
+        if (err) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
             return
         }
@@ -227,16 +232,16 @@ router.get('/case/search', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
-router.get('/case/listDicts', function(req, res, next) {
-    co(function *(){
+router.get('/case/listDicts', function (req, res, next) {
+    co(function* () {
         try {
             var params = req.params || req.query
             var listDicts = yield __getListDicts(params['EndoType'])
-            res.send(responseTool({"listDicts": listDicts}, repSuccess, repSuccessMsg))
-        } catch(error) {
+            res.send(responseTool({ "listDicts": listDicts }, repSuccess, repSuccessMsg))
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
-        
+
     })
 });
 
@@ -305,7 +310,7 @@ router.get('/case/listDicts', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
-router.post('/case/add', function(req, res, next) {
+router.post('/case/add', function (req, res, next) {
     var params = req.body;
     // 获取新增病例的
     console.log(params)
@@ -377,7 +382,7 @@ router.post('/case/add', function(req, res, next) {
         CheckContent: params.CheckContent,
         CheckDiagnosis: params.CheckDiagnosis
     }
-    co(function *(){
+    co(function* () {
         try {
             // 获取病历编号
             var caseNo = yield __getCaseNoReq();
@@ -395,7 +400,7 @@ router.post('/case/add', function(req, res, next) {
                     res.send(responseTool({}, repError, repParamsErrorMsg))
                 }
             }
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
@@ -468,7 +473,7 @@ router.post('/case/add', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
-router.post('/case/update', function(req, res, next) {
+router.post('/case/update', function (req, res, next) {
     var params = req.body;
     const schemaResult = validateJson(caseSchema('update'), params)
     if (!schemaResult.result) {
@@ -533,7 +538,7 @@ router.post('/case/update', function(req, res, next) {
         CheckContent: params.CheckContent,
         CheckDiagnosis: params.CheckDiagnosis
     }
-    co(function *(){
+    co(function* () {
         try {
             // 更新 record_base
             yield __updateCase(params["ID"], caseObj);
@@ -542,7 +547,7 @@ router.post('/case/update', function(req, res, next) {
                 yield __updateCaseCheck(params["ID"], caseCheckObj)
             }
             res.send(responseTool({}, repSuccess, repSuccessMsg))
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
@@ -567,7 +572,7 @@ router.post('/case/update', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
- router.post('/case/delete', function(req, res, next) {
+router.post('/case/delete', function (req, res, next) {
     var params = req.body
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
@@ -575,14 +580,14 @@ router.post('/case/update', function(req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
-    co(function *(){
+    co(function* () {
         try {
             // 从 record_base 中删除
             yield __deleteCaseByID(params["ID"]);
             // 从 record_endoscopy_check 中删除
             yield __deleteCaseCheckByID(params["ID"]);
             res.send(responseTool({}, repSuccess, repSuccessMsg))
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
@@ -607,7 +612,7 @@ router.post('/case/update', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
- router.get('/case/caseInfo', function(req, res, next) {
+router.get('/case/caseInfo', function (req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
@@ -615,7 +620,7 @@ router.post('/case/update', function(req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
-    co(function *(){
+    co(function* () {
         try {
             // 查询病例信息
             var caseInfo = yield __getCaseInfo(params["ID"]);
@@ -629,11 +634,13 @@ router.post('/case/update', function(req, res, next) {
                 ...caseInfo
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
 });
+
+
 // #region 病例图片
 /**
  * @api {get} /case/caseimages 1.9 病例图片
@@ -652,7 +659,7 @@ router.post('/case/update', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
-router.get('/case/caseImages', function(req, res, next) {
+router.get('/case/caseImages', function (req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
@@ -660,17 +667,18 @@ router.get('/case/caseImages', function(req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
-    co(function *(){
+    co(function* () {
         try {
             // 查询图片
             let images = yield __getImages(params["ID"]);
             var data = images;
             res.send(responseTool(data, repSuccess, repSuccessMsg))
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
 });
+
 
 // #region 病例视频
 /**
@@ -690,7 +698,7 @@ router.get('/case/caseImages', function(req, res, next) {
  * @apiVersion 1.0.0
  */
 // #endregion
-router.get('/case/casevideos', function(req, res, next) {
+router.get('/case/casevideos', function (req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
@@ -698,18 +706,142 @@ router.get('/case/casevideos', function(req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
-    co(function *(){
+    co(function* () {
         try {
             // 查询视频
             let videos = yield __getVideos(params["ID"]);
             var data = videos;
             res.send(responseTool(data, repSuccess, repSuccessMsg))
-        } catch(error) {
+        } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
 });
 
+
+// #region 查询报告医院信息
+/**
+ * @api {get} /case/hospitalInfo 2.0 查询报告医院信息
+ * @apiDescription 查询报告医院信息
+ * @apiName hospitalInfo
+ * @apiGroup 病例（Case）
+ * @apiParam {string} [EndoType] 工作站类型
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {dict},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/hospitalInfo
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/hospitalInfo', function (req, res, next) {
+    co(function* () {
+        try {
+            var params = req.params || req.query
+            var hospitalInfos = yield __getHospitalInfo(params['EndoType'])
+            var data = {
+                ...hospitalInfos,
+                'szIconPath': 'DefaultLogo.jpg',
+            }
+            res.send(responseTool(data, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+
+    })
+});
+
+
+// #region 修改报告医院信息
+/**
+ * @api {post} /case/updateHospitalInfo 2.1 修改报告医院信息
+ * @apiDescription 修改报告医院信息
+ * @apiName updateHospitalInfo
+ * @apiGroup 病例（Case）
+ * @apiParam {int} ID 内部ID
+ * @apiParam {string} [szHospital] 主标题
+ * @apiParam {string} [szSlave] 副标题
+ * @apiParam {string} [szAddress] 地址
+ * @apiParam {int} [szTelephone] 联系方式
+ * @apiParam {string} [szPostCode] 邮编
+ * @apiParam {string} [szTitle] 软件标题
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/updateHospitalInfo
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.post('/case/updateHospitalInfo', function (req, res, next) {
+    var params = req.body
+    const schemaResult = validateJson(caseHospitalSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    var caseHospitalObj = {
+        szHospital: params.szHospital,
+        szSlave: params.szSlave,
+        szAddress: params.szAddress,
+        szTelephone: params.szTelephone,
+        szPostCode: params.szPostCode,
+        szTitle: params.szTitle,
+    }
+    co(function* () {
+        try {
+            // 更新 reginfo
+            yield __updateCaseHospital(params["ID"], caseHospitalObj);
+            res.send(responseTool({}, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+})
+// #region 上传医院徽标
+/**
+ * @api {post} /case/uploadHospitalLogo 2.2 上传医院徽标
+ * @apiDescription 上传医院徽标</br></br><text style="color:#EA0000">特别说明：Content-Type:formData </br>接口测试 参数 body/form-data</text>
+ * @apiName uploadHospitalLogo
+ * @apiGroup 病例（Case）
+ * @apiParam {File} logo 上传的图片
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/uploadHospitalLogo
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
+    console.log(req.file);
+    try {
+        fs.readFile(req.file.path, (err, data) => {
+            // 校验是否上传成功
+            if (err) { return res.send(responseTool({}, repError, '上传失败')) }
+            // 加载设备图片和视频静态文件
+            var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+            let filename = 'DefaultLogo.jpg'
+            let logofilePath = path.join(config.logoPath, filename)
+            fs.writeFile(logofilePath, data, (err) => {
+                if (err) { return res.send(responseTool({}, repError, '写入失败')) };
+                res.send(responseTool({}, repSuccess, repSuccessMsg))
+            })
+        })
+    } catch (error) {
+        res.send(responseTool({}, repError, "上传失败"))
+    }
+})
 // Private Function
 // 新增时获取病例编号
 function __getNextCaseNo(caseNo) {
@@ -736,11 +868,11 @@ function __getNextCaseNo(caseNo) {
     }
 }
 // 获取病例编号
-function __getCaseNoReq () {
+function __getCaseNoReq() {
     return new Promise((resolve, reject) => {
         var sqlStr = `select * from dbo.record_base where ID in (select max(ID) from dbo.record_base);`
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -762,8 +894,8 @@ function __getListDicts(endoType) {
         } else {
             sqlStr = `select * from dbo.ListDicts where EndoType=${endoType};`
         }
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -885,8 +1017,8 @@ function __updateCaseCheck(ID, caseCheckObj) {
 function __deleteCaseByID(ID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `delete from dbo.record_base where ID=${ID};`
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -898,8 +1030,8 @@ function __deleteCaseByID(ID) {
 function __deleteCaseCheckByID(ID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `delete from dbo.record_endoscopy_check where ID=${ID};`
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -920,8 +1052,8 @@ function __getCaseInfo(caseID) {
         dbo.record_base rb, 
         dbo.record_endoscopy_check rec  
         where rb.ID=${caseID} and rec.ID=rb.ID;`
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -937,8 +1069,8 @@ function __getCaseInfo(caseID) {
 function __getImages(caseID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `select * from dbo.images_of_record where RecordID=${caseID};`;
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -950,8 +1082,8 @@ function __getImages(caseID) {
 function __getVideos(caseID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `select * from dbo.video_archive where RecordID=${caseID};`;
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
@@ -963,12 +1095,58 @@ function __getVideos(caseID) {
 function __getImagesAndVideosCount(caseID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `select (select COUNT(*) from images_of_record where RecordID = ${caseID}) imagesCount, (select COUNT(*) from video_archive where RecordID = ${caseID}) videosCount;`;
-        db.sql(sqlStr, function(err, result){
-            if(err) {
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
                 reject(err)
                 return
             }
             resolve(result['recordset'][0])
+        });
+    })
+}
+// 获取病例字典
+function __getHospitalInfo(endoType) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = ""
+        if (endoType == null) {
+            sqlStr = `select * from dbo.reginfo;`
+        } else {
+            sqlStr = `select * from dbo.reginfo where EndoType=${endoType};`
+        }
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            if (result['recordset'].length > 0) {
+                resolve(result['recordset'][0])
+            } else {
+                resolve(null)
+            }
+        });
+    })
+}
+// 更新病例诊断信息
+function __updateCaseHospital(ID, caseHospitalObj) {
+    return new Promise((resolve, reject) => {
+        var valueStr = ""
+        for (key in caseHospitalObj) {
+            if (caseHospitalObj[key] == null) {
+                continue
+            } else if (typeof caseHospitalObj[key] === 'string') {
+                valueStr += `${key}='${caseHospitalObj[key]}',`
+            } else {
+                valueStr += `${key}=${caseHospitalObj[key]},`
+            }
+        }
+        valueStr = valueStr.substr(0, valueStr.length - 1);
+        var sqlStr = `update dbo.reginfo set ${valueStr} where ID=${ID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
         });
     })
 }

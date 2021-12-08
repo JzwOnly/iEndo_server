@@ -199,10 +199,6 @@ function setNewPassword(mUserID, mNewPassword) {
       }
     });
   });
-
-
-
-
 }
 
 
@@ -647,7 +643,7 @@ function getDeleteDataExist(mDeleteUserID) {
 * @apiGroup User 
 * @apiParam {string} CurrentUserID 当前登入的用户ID
 * @apiParam {string} ChangeUserID 需要被修改权限的用户ID
-* @apiParam {string} UserName 当前用户名字
+* @apiParam {string} UserName 当前登入的用户名字
 * @apiParam {string}  Relo 需要被修改的用户权限等级
 * @apiSuccess {json} result
 * @apiSuccessExample {json} Success-Response:
@@ -670,6 +666,11 @@ router.post('/users/changePurview', function (req, res, nest) {
   var Relo = req.body.Relo
   co(function* () {
     try {
+      if(parseInt(ChangeUserID)==1){
+        res.send(responseTool({}, repError, "超级用户权限不能被修改！"))
+        console.log("当前用户名-=======超级用户权限不能更改==="+ChangeUserID )
+        return;
+      }
       // 查询被修改用户是否存在
       var useridIfEexist = yield getReadUseridIfExist(ChangeUserID);
       // 超级用户才可以更改 ，因为Role 字段两者都为0状态不能区分，通过UserName=Adimn 和 Role=0来判断
@@ -678,7 +679,8 @@ router.post('/users/changePurview', function (req, res, nest) {
       console.log("当前用户名-=======0===" + CurrentUserName)
       console.log("当前用户权限-=========1===" + currentRelostatue)
       console.log("被查询用户是否存在-========11===" + useridIfEexist)
-      // 被查询用户存在 并且 是超级管理员 并且  currentRelostatue =0
+  
+        // 被查询用户存在 并且 是超级管理员 并且  currentRelostatue =0
       if (useridIfEexist && 'Admin' == CurrentUserName) {
         if (currentRelostatue == 0) {//超级用户
           // 修改权限

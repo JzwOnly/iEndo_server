@@ -111,9 +111,24 @@ const caseSearchSchema = {
     required: ["EndoType"],
     additionalProperties: false,
 }
+const caseHospitalSchema = {
+    type: "object",
+    properties: {
+        ID: {type: ["integer", "string"]}, // 内部id
+        szHospital: {type: "string"},
+        szSlave: {type: "string"},
+        szAddress: {type: "string"},
+        szTelephone: {type: "string"},
+        szPostCode: {type: "string"},
+        szTitle: {type: "string"},
+    },
+    required: ["ID"],
+    additionalProperties: false,
+}
 module.exports = {
     validateJson,
     caseSchema,
     caseInfoSchema,
-    caseSearchSchema
+    caseSearchSchema,
+    caseHospitalSchema
 };

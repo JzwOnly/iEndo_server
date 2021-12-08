@@ -168,7 +168,7 @@
             "type": "string",
             "optional": false,
             "field": "UserName",
-            "description": "<p>当前用户名字</p>"
+            "description": "<p>当前登入的用户名字</p>"
           },
           {
             "group": "Parameter",
@@ -1017,6 +1017,55 @@
   },
   {
     "type": "get",
+    "url": "/case/hospitalInfo",
+    "title": "2.0 查询报告医院信息",
+    "description": "<p>查询报告医院信息</p>",
+    "name": "hospitalInfo",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {dict},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/hospitalInfo"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "get",
     "url": "/case/list",
     "title": "1.1 病例列表",
     "description": "<p>病例列表</p>",
@@ -1709,6 +1758,146 @@
     "sampleRequest": [
       {
         "url": "http://localhost:3000/case/update"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "post",
+    "url": "/case/updateHospitalInfo",
+    "title": "2.1 修改报告医院信息",
+    "description": "<p>修改报告医院信息</p>",
+    "name": "updateHospitalInfo",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "ID",
+            "description": "<p>内部ID</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "szHospital",
+            "description": "<p>主标题</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "szSlave",
+            "description": "<p>副标题</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "szAddress",
+            "description": "<p>地址</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": true,
+            "field": "szTelephone",
+            "description": "<p>联系方式</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "szPostCode",
+            "description": "<p>邮编</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "szTitle",
+            "description": "<p>软件标题</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": [],\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/updateHospitalInfo"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "post",
+    "url": "/case/uploadHospitalLogo",
+    "title": "2.2 上传医院徽标",
+    "description": "<p>上传医院徽标</br></br><text style=\"color:#EA0000\">特别说明：Content-Type:formData </br>接口测试 参数 body/form-data</text></p>",
+    "name": "uploadHospitalLogo",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "File",
+            "optional": false,
+            "field": "logo",
+            "description": "<p>上传的图片</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/uploadHospitalLogo"
       }
     ],
     "version": "1.0.0",

@@ -26,6 +26,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 var config = ini.parse(fs.readFileSync('./deviceConfig.ini', 'utf-8'));
 app.use(express.static(config.imagesPath));
 app.use(express.static(config.videosPath));
+app.use(express.static(config.logoPath));
 
 app.use('/', indexRouter);
 app.use('/', usersRouter);
