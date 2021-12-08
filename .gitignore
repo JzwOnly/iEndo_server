@@ -39,7 +39,8 @@ node_modules/
 jspm_packages/
 
 # upload images
-images/logo/
+*/images/logo/
+**/images/logo/
 # Typescript v1 declaration files
 typings/
  
