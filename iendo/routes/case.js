@@ -7,7 +7,7 @@ const fs = require('fs');
 var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
-const upload = multer({ dest: 'public/images' })
+const upload = multer({ dest: 'public/images/logo' })
 const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
