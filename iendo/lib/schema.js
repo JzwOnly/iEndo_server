@@ -115,12 +115,12 @@ const caseHospitalSchema = {
     type: "object",
     properties: {
         ID: {type: ["integer", "string"]}, // 内部id
-        szHospital: {type: "string"},
-        szSlave: {type: "string"},
-        szAddress: {type: "string"},
-        szTelephone: {type: "string"},
-        szPostCode: {type: "string"},
-        szTitle: {type: "string"},
+        szHospital: {type: "string", maxLength:50},
+        szSlave: {type: "string", maxLength:50},
+        szAddress: {type: "string", maxLength:50},
+        szTelephone: {type: "string", maxLength:30},
+        szPostCode: {type: "string", maxLength:6},
+        szTitle: {type: "string", maxLength:20},
     },
     required: ["ID"],
     additionalProperties: false,

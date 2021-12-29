@@ -46,6 +46,9 @@ cd 到项目目录iendo
 `pm2 start process.json`(在项目目录)  
 `pm2 save`  
 重复 `步骤11`
+## 15 负载均衡
+`process.json`中添加  
+`"instances": "max", "exec_mode": "cluster"`
 
 ## 自定义端口
 在iendo项目中  
