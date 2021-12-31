@@ -1381,6 +1381,83 @@ define({ "api": [
   },
   {
     "type": "post",
+    "url": "/report.aspx",
+    "title": "2.3 报告搜索",
+    "description": "<p>报告搜索</br></br><text style=\"color:#EA0000\">特别说明：OutpatientID、CardID、InsuranceID 三选一必传, 另外两个传空字符串或不传</text></p>",
+    "name": "searchReport",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "Name",
+            "description": "<p>姓名</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "Sex",
+            "description": "<p>性别 （男，女）</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "OutpatientID",
+            "description": "<p>门诊号</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "CardID",
+            "description": "<p>身份证号</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": true,
+            "field": "InsuranceID",
+            "description": "<p>社保卡ID</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": [{case},{case}],\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000//report.aspx?Name=xxx&Sex=xx"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "post",
     "url": "/case/update",
     "title": "1.6 修改病例",
     "description": "<p>修改病例</p>",

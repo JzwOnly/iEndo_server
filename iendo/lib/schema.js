@@ -80,6 +80,18 @@ const caseInfoSchema = {
     required: ["ID"],
     additionalProperties: false,
 }
+const caseReportSearchSchema = {
+    type: "object",
+    properties: {
+        Name: {type: "string", maxLength:50}, // 姓名
+        Sex: {type: "string", maxLength:10}, // 性别
+        OutpatientID: {type: "string", maxLength:20}, // 门诊号
+        CardID: {type: "string", maxLength:20}, // 身份证号
+        InsuranceID: {type: "string", maxLength:200}, // 社保卡ID
+    },
+    require: ["Name"],
+    additionalProperties: false,
+}
 const caseSearchSchema = {
     type: "object",
     properties: {
@@ -130,5 +142,6 @@ module.exports = {
     caseSchema,
     caseInfoSchema,
     caseSearchSchema,
-    caseHospitalSchema
+    caseHospitalSchema,
+    caseReportSearchSchema
 };

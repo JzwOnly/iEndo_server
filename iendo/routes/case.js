@@ -8,7 +8,7 @@ var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
 const upload = multer({ dest: 'public/images/logo' })
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema } = require('../lib/schema');
+const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -78,7 +78,7 @@ router.get('/case/list', function (req, res, next) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
             return
         }
-        res.send(responseTool(result['recordset'], repSuccess, repSuccessMsg));
+        res.send(responseTool(result['recordset'], repSuccess, repSuccessMsg, result['recordset'].length==0?{isEmpty: true}: {isEmpty: false}));
     });
 });
 
@@ -235,7 +235,7 @@ router.get('/case/search', function (req, res, next) {
 router.get('/case/listDicts', function (req, res, next) {
     co(function* () {
         try {
-            var params = req.params || req.query
+            var params = req.query || req.params
             var listDicts = yield __getListDicts(params['EndoType'])
             res.send(responseTool({ "listDicts": listDicts }, repSuccess, repSuccessMsg))
         } catch (error) {
@@ -369,8 +369,12 @@ router.post('/case/add', function (req, res, next) {
         EndoType: params.EndoType,
     }
     // 判断工作站类型
-    if (Number(params["EndoType"]) == 3) {
+    const inEndo = [1,2,3,4,5,6,7,8,9,10,11]
+    const outEndo = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
+    if (inEndo.indexOf(Number(params["EndoType"]))) {
         caseObj["RecordType"] = "endoscopy_check";
+    } else if (outEndo.indexOf(Number(params["EndoType"]))) {
+        caseObj["RecordType"] = "endoscopy_surgery";
     }
     // 添加年龄单位默认值
     if (params["AgeUnit"] == "" || params["AgeUnit"] == null) {
@@ -740,7 +744,7 @@ router.get('/case/casevideos', function (req, res, next) {
 router.get('/case/hospitalInfo', function (req, res, next) {
     co(function* () {
         try {
-            var params = req.params || req.query
+            var params = req.query || req.params 
             var hospitalInfos = yield __getHospitalInfo(params['EndoType'])
             var data = {
                 ...hospitalInfos,
@@ -805,6 +809,8 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
         }
     })
 })
+
+
 // #region 上传医院徽标
 /**
  * @api {post} /case/uploadHospitalLogo 2.2 上传医院徽标
@@ -841,6 +847,82 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
     } catch (error) {
         res.send(responseTool({}, repError, "上传失败"))
     }
+})
+
+
+// #region 报告搜索
+/**
+ * @api {post} /report.aspx 2.3 报告搜索
+ * @apiDescription 报告搜索</br></br><text style="color:#EA0000">特别说明：OutpatientID、CardID、InsuranceID 三选一必传, 另外两个传空字符串或不传</text>
+ * @apiName searchReport
+ * @apiGroup 病例（Case）
+ * @apiParam {string} Name 姓名
+ * @apiParam {string} Sex 性别 （男，女）
+ * @apiParam {string} [OutpatientID] 门诊号
+ * @apiParam {string} [CardID] 身份证号
+ * @apiParam {string} [InsuranceID] 社保卡ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [{case},{case}],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000//report.aspx?Name=xxx&Sex=xx
+ * @apiVersion 1.0.0 
+*/
+// #endregion
+router.post('/report.aspx', function (req, res, next) {
+    var params = req.body
+    const schemaResult = validateJson(caseReportSearchSchema, params)
+    if (!schemaResult.result) {
+        res.send("-1")
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    if (params.OutpatientID==null && params.CardID==null && params.InsuranceID==null) {
+        res.send("-1")
+        return;
+    }
+    var caseSearchObj = {
+        Name: params.Name,
+        Sex: params.Sex,
+        OutpatientID: params.OutpatientID ? params.OutpatientID : "",
+        CardID: params.CardID ? params.CardID : "",
+        InsuranceID: params.InsuranceID ? params.InsuranceID : "",
+    }
+    var condiStr = ""
+    for (key in caseSearchObj) {
+        if (caseSearchObj[key] == null || caseSearchObj[key] === "") {
+            continue
+        } else {
+            condiStr += `rb.${key}='${caseSearchObj[key]}' and `
+        }
+    }
+    condiStr += "rb.ID = rec.ID"
+    var sqlStr = `select
+    rb.*, 
+    rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis
+    from 
+    dbo.record_base rb, 
+    dbo.record_endoscopy_check rec 
+    where ${condiStr};`
+    db.sql(sqlStr, function (err, result) {
+        if (err) {
+            res.send("-1");
+            return
+        }
+        if (result['recordset'].length > 0) {
+            var data = result['recordset'].map(row => {
+                row.CheckDate = moment(row.CheckDate).utc().format("YYYY-MM-DD HH:mm:ss")
+                row.RecordDate = moment(row.RecordDate).utc().format("YYYY-MM-DD HH:mm:ss")
+                return row;
+            });
+            res.send({"ds":data})
+        } else {
+            res.send("-1")
+        }
+    });
 })
 // Private Function
 // 新增时获取病例编号
