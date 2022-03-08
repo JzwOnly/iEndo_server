@@ -679,31 +679,14 @@ router.post('/users/changePurview', function (req, res, nest) {
       console.log("当前用户名-=======0===" + CurrentUserName)
       console.log("当前用户权限-=========1===" + currentRelostatue)
       console.log("被查询用户是否存在-========11===" + useridIfEexist)
-  
-        // 被查询用户存在 并且 是超级管理员 并且  currentRelostatue =0
-      if (useridIfEexist && 'Admin' == CurrentUserName) {
-        if (currentRelostatue == 0) {//超级用户
-          // 修改权限
-          var changeRelostatue = yield setChangeRole(ChangeUserID, Relo);
-          res.send(responseTool({}, repSuccess, repSuccessMsg))
-        } else {
-          res.send(responseTool({}, repError, "参数错误D"))
-
-        }
-
+      if ((useridIfEexist && currentRelostatue == 0 && 'Admin' == CurrentUserName) || (useridIfEexist && currentRelostatue == 1)) {
+        var changeRelostatue = yield setChangeRole(ChangeUserID, Relo);
+        res.send(responseTool({}, repSuccess, repSuccessMsg))
       } else {
-        res.send(responseTool({}, repError, "参数错误C"))
-      }
-
-      if (null != useridIfEexist) {  //存在
-        // res.send(responseTool({}, repError, "参数错误"))
-      } else {//不存在
-        console.log("changePurview==被修改用户ID==不存在", useridIfEexist);
-        res.send(responseTool({}, repError, "参数错误B"))
-        return
+        res.send(responseTool({}, repError, "无修改权限"))
       }
     } catch (error) {
-      res.send(responseTool({}, repError, "参数错误A"))
+      res.send(responseTool({}, repError, "参数错误"))
     }
   })
   // select userID,UserName from  users where UserID='111';
@@ -714,8 +697,13 @@ router.post('/users/changePurview', function (req, res, nest) {
 // 设置被修改用户的权限
 function setChangeRole(ChangeUserID, Relo) {
   // update dbo.Purview set Role='1' where UserID = '22';
+  var sqlCurrentRole = "";
+  if (Relo == 0 || Relo == 1) {
+    sqlCurrentRole = `update dbo.Purview set CanNew=1, CanEdit=1, CanDelete=1, Role=${Relo} where UserID =${ChangeUserID};`
+  } else {
+    sqlCurrentRole = `update dbo.Purview set CanNew=0, CanEdit=0, CanDelete=0, Role=${Relo} where UserID =${ChangeUserID};`
+  }
   return new Promise((resolve, reject) => {
-    var sqlCurrentRole = `update dbo.Purview set Role=${Relo} where UserID =${ChangeUserID};`
     db.sql(sqlCurrentRole, function (err, result) {
       if (err) {
         console.log("我的测试=======DDD2222=== 失败");

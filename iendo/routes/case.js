@@ -8,7 +8,7 @@ var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
 const upload = multer({ dest: 'public/images/logo' })
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema } = require('../lib/schema');
+const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -254,6 +254,7 @@ router.get('/case/listDicts', function (req, res, next) {
  * @apiGroup 病例（Case）
  * @apiParam {string} Name 姓名
  * @apiParam {string} UserName 操作员用户名
+ * @apiParam {string} UserID 用户ID
  * @apiParam {int} EndoType 工作站类型
  * @apiParam {string} [Married] 婚否 （已婚，未婚）
  * @apiParam {string} [Sex] 性别 （男，女）
@@ -303,7 +304,7 @@ router.get('/case/listDicts', function (req, res, next) {
  * @apiSuccessExample {json} Success-Response:
  * {
  *      "code": 0,
- *      "data": {},
+ *      "data": {"ID":ID},
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:3000/case/add
@@ -388,6 +389,12 @@ router.post('/case/add', function (req, res, next) {
     }
     co(function* () {
         try {
+            // 先判断是否有权限
+            var canOperation =  yield __canOperation("CanNew", params.UserID)
+            if (!canOperation) {
+                res.send(responseTool({}, repError, "当前账号无操作权限"))
+                return;
+            }
             // 获取病历编号
             var caseNo = yield __getCaseNoReq();
             caseObj["CaseNo"] = caseNo;
@@ -398,8 +405,10 @@ router.post('/case/add', function (req, res, next) {
             } else {
                 // 新增 record_endoscopy_check
                 const result = yield __addCaseCheck(ID, caseCheckObj);
+                // 插入记录
+                yield __logRecord(generateLogObj(params.UserID, params.UserName, "新增病例", `病例ID: ${ID}`, params.EndoType))
                 if (result) {
-                    res.send(responseTool({}, repSuccess, repSuccessMsg))
+                    res.send(responseTool({"ID": ID}, repSuccess, repSuccessMsg))
                 } else {
                     res.send(responseTool({}, repError, repParamsErrorMsg))
                 }
@@ -420,8 +429,9 @@ router.post('/case/add', function (req, res, next) {
  * @apiParam {int} ID 内部ID
  * @apiParam {string} CaseNo 病历编号
  * @apiParam {string} UserName 操作员用户名
+ * @apiParam {int} EndoType 工作站类型
+ * @apiParam {string} UserID 用户ID
  * @apiParam {string} [Name] 姓名
- * @apiParam {int} [EndoType] 工作站类型
  * @apiParam {string} [Married] 婚否 （已婚，未婚）
  * @apiParam {string} [Sex] 性别 （男，女）
  * @apiParam {string} [Tel] 电话
@@ -544,12 +554,20 @@ router.post('/case/update', function (req, res, next) {
     }
     co(function* () {
         try {
+            // 先判断是否有权限
+            var canOperation =  yield __canOperation("CanEdit", params.UserID)
+            if (!canOperation) {
+                res.send(responseTool({}, repError, "当前账号无操作权限"))
+                return;
+            }
             // 更新 record_base
             yield __updateCase(params["ID"], caseObj);
             if (params.ExaminingPhysician != null || params.ClinicalDiagnosis != null || params.CheckContent != null || params.CheckDiagnosis != null) {
                 // 更新 record_endoscopy_check
                 yield __updateCaseCheck(params["ID"], caseCheckObj)
             }
+            // 插入记录
+            yield __logRecord(generateLogObj(params.UserID, params.UserName, "修改病例", `病例ID: ${params["ID"]}`, params.EndoType))
             res.send(responseTool({}, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
@@ -565,6 +583,9 @@ router.post('/case/update', function (req, res, next) {
  * @apiName delete
  * @apiGroup 病例（Case）
  * @apiParam {int} ID 内部ID
+ * @apiParam {string} UserName 操作员用户名
+ * @apiParam {int} EndoType 工作站类型
+ * @apiParam {string} UserID 用户ID
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -578,7 +599,7 @@ router.post('/case/update', function (req, res, next) {
 // #endregion
 router.post('/case/delete', function (req, res, next) {
     var params = req.body
-    const schemaResult = validateJson(caseInfoSchema, params)
+    const schemaResult = validateJson(caseInfoDeleteSchema, params)
     if (!schemaResult.result) {
         res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
@@ -586,10 +607,18 @@ router.post('/case/delete', function (req, res, next) {
     }
     co(function* () {
         try {
+            // 先判断是否有权限
+            var canOperation =  yield __canOperation("CanDelete", params.UserID)
+            if (!canOperation) {
+                res.send(responseTool({}, repError, "当前账号无操作权限"))
+                return;
+            }
             // 从 record_base 中删除
             yield __deleteCaseByID(params["ID"]);
             // 从 record_endoscopy_check 中删除
             yield __deleteCaseCheckByID(params["ID"]);
+            // 插入记录
+            yield __logRecord(generateLogObj(params.UserID, params.UserName, "删除病例", `病例ID: ${params["ID"]}`, params.EndoType))
             res.send(responseTool({}, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
@@ -766,6 +795,9 @@ router.get('/case/hospitalInfo', function (req, res, next) {
  * @apiName updateHospitalInfo
  * @apiGroup 病例（Case）
  * @apiParam {int} ID 内部ID
+ * @apiParam {string} UserName 操作员用户名
+ * @apiParam {int} EndoType 工作站类型
+ * @apiParam {string} UserID 用户ID
  * @apiParam {string} [szHospital] 主标题
  * @apiParam {string} [szSlave] 副标题
  * @apiParam {string} [szAddress] 地址
@@ -803,6 +835,8 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
         try {
             // 更新 reginfo
             yield __updateCaseHospital(params["ID"], caseHospitalObj);
+            // 插入记录
+            yield __logRecord(generateLogObj(params.UserID, params.UserName, "修改医院信息", `医院信息ID: ${params["ID"]}`, params.EndoType))
             res.send(responseTool({}, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
@@ -852,7 +886,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
 
 // #region 报告搜索
 /**
- * @api {post} /report.aspx 2.3 报告搜索
+ * @api {post} /report.aspx 2.3 报告搜索 (用于微信小程序) 
  * @apiDescription 报告搜索</br></br><text style="color:#EA0000">特别说明：OutpatientID、CardID、InsuranceID 三选一必传, 另外两个传空字符串或不传</text>
  * @apiName searchReport
  * @apiGroup 病例（Case）
@@ -868,7 +902,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
  *      "data": [{case},{case}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000//report.aspx?Name=xxx&Sex=xx
+ * @apiSampleRequest http://localhost:3000/report.aspx?Name=xxx&Sex=xx
  * @apiVersion 1.0.0 
 */
 // #endregion
@@ -924,7 +958,132 @@ router.post('/report.aspx', function (req, res, next) {
         }
     });
 })
+
+
+// #region 报告图片选择
+/**
+ * @api {post} /report/selectImages 2.4 报告图片选择 (用于打印报告) 
+ * @apiDescription 报告图片选择
+ * @apiName selectImages
+ * @apiGroup 病例（Case）
+ * @apiParam {string} CaseID 病例ID
+ * @apiParam {string} oldImageIDs 修改前图片ID字符串，最多选择9张图片，多个图片ID用 英文的',' 分割, 例子：230,220,245
+ * @apiParam {string} newImageIDs 修改后图片ID字符串，同上
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/selectImages
+ * @apiVersion 1.0.0 
+*/
+// #endregion
+router.post('/report/selectImages', function(req, res, next) {
+    var params = req.body
+    const schemaResult = validateJson(selectImagesSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    let CaseID = params.CaseID;
+    var oldImageIDs = params.oldImageIDs;
+    var newImageIDs = params.newImageIDs;
+    if (newImageIDs.split(",").length > 9) {
+        res.send(responseTool({}, repError, "最多选择9张图片"))
+        return;
+    }
+    var newImageIDStr = newImageIDs.split(',').join(';');
+    newImageIDStr += ";";
+    co(function* () {
+        try {
+            // 更新 recode_base images
+            yield __updateCaseInfoImages(CaseID, newImageIDStr);
+            // 更新 images_of_record 选中状态
+            yield __updateImageSelect(oldImageIDs, newImageIDs);
+            res.send(responseTool({}, repSuccess, repSuccessMsg));
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+})
+
+// #region 查询服务端是否已经生成报告
+/**
+ * @api {get} /report/reportExists 2.5 查询服务端是否已经生成报告 
+ * @apiDescription 查询服务端是否已经生成报告
+ * @apiName reportExists
+ * @apiGroup 病例（Case）
+ * @apiParam {string} ID 病例ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {"exists": true, "url": "xxx.bmp"},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/reportExists
+ * @apiVersion 1.0.0 
+*/
+// #endregion
+router.get('/report/reportExists', function(req, res, next) {
+    var params = req.query || req.params
+    const schemaResult = validateJson(caseInfoSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    co(function* () {
+        try {
+            // 查询是否已经生成病理报告
+            let url = yield __isExistsReport(params["ID"]);
+            var data = {
+                "exists": false,
+                "url": ""
+            };
+            if (url) {
+                data = {
+                  "exists": true,
+                  "url": `${params["ID"]}/Report/${url}`
+                }
+            }
+            res.send(responseTool(data, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+
+})
+
+
 // Private Function
+// 查询当前用户是否有操作权限
+function __canOperation(action, UserID) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from dbo.Purview where UserID = ${UserID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            let records = result['recordset']
+            if (records.length > 0) {
+                var purviewModel = records[0];
+                if (purviewModel.hasOwnProperty(action)) {
+                    resolve(purviewModel[action] == 1)
+                } else {
+                    resolve(false)
+                }
+                
+            } else {
+                resolve(false)
+            }
+        });
+    })
+}
 // 新增时获取病例编号
 function __getNextCaseNo(caseNo) {
     if (caseNo == null) {
@@ -1232,4 +1391,135 @@ function __updateCaseHospital(ID, caseHospitalObj) {
         });
     })
 }
+// 更新病例报告图片选择images
+function __updateCaseInfoImages(caseID, images) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `update dbo.record_base set images='${images}' where ID=${caseID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
+// 更新图片选择状态
+function __updateImageSelect(oldImageIDs, newImageIDs) {
+    return new Promise((resolve, reject) => {
+        var oldImages = []
+        var newImages = []
+        if (oldImageIDs !== "") {
+            oldImages = oldImageIDs.split(",");
+        }
+        if (newImageIDs !== "") {
+            newImages = newImageIDs.split(",");
+        }
+        var selected_false_ids = subArray(oldImages, newImages);
+        var selected_true_ids = subArray(newImages, oldImages);
+        var selected_false = selected_false_ids.join(",");
+        var selected_true = selected_true_ids.join(",");
+        var finalSqlStr = "";
+        if (selected_false_ids.length > 0) {
+            finalSqlStr += `update dbo.images_of_record set Selected=0 where ID in (${selected_false});`
+        }
+        if (selected_true_ids.length > 0) {
+            finalSqlStr += `update dbo.images_of_record set Selected=1 where ID in (${selected_true});`
+        }
+        db.sql(finalSqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            console.log("更新图片选中状态", result)
+            resolve(true)
+        });
+    })
+}
+// 查询是否已经生成报告
+function __isExistsReport(caseID) {
+    // 加载设备图片和视频静态文件
+    var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+    let caseReportDirPath = path.join(config.imagesPath, `${caseID}/Report`)
+    console.log(caseReportDirPath)
+    return new Promise((resolve, reject) => {
+        fs.access(caseReportDirPath, function(err) {
+            if (err) {
+                if (err.code == "ENOENT") {
+                    resolve(null)
+                } else {
+                    reject(false);//"不存在"
+                }
+            } else {
+                // resolve(true);//"存在"
+                // 查询文件夹下所有文件
+                let filesArr = fs.readdirSync(caseReportDirPath)
+                if (filesArr.length > 0) {
+                    resolve(filesArr[0])
+                } else {
+                    resolve(null)
+                }
+            }
+        })
+    })
+}
+// 记录日志
+function __logRecord(logObj) {
+    return new Promise((resolve, reject) => {
+        var sqlLogObj = {
+            UserName: logObj.UserName,
+            PatientID: logObj.PatientID,
+            Operation: logObj.Operation,
+            Message: logObj.Message,
+            UserID: logObj.UserID,
+            ClientID: logObj.ClientID,
+            EndoType: logObj.EndoType,
+        }
+        var valueStr = ""
+        for (key in sqlLogObj) {
+            if (sqlLogObj[key] == null) {
+                valueStr += `'',`
+            } else if (typeof sqlLogObj[key] === 'string') {
+                valueStr += "'" + sqlLogObj[key] + "',"
+            } else {
+                valueStr += sqlLogObj[key] + ","
+            }
+        }
+        valueStr = valueStr.substr(0, valueStr.length - 1);
+        var sqlStr = `insert into dbo.log(${Object.keys(sqlLogObj).join(',')}) values(${valueStr});`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    });
+
+}
+// 两个数组做差集
+function subArray(arr1, arr2) {
+    var set1 = new Set(arr1);
+    var set2 = new Set(arr2);
+    var subset = [];
+    for (let item of set1) {
+        if (!set2.has(item)) {
+            subset.push(item);
+        }
+    }
+    return subset;
+}
+function generateLogObj(UserID, UserName, Operation, Message, EndoType) {
+    return {
+        "UserID": UserID,
+        "UserName": UserName,
+        "PatientID": 0,
+        "Operation": Operation,
+        "Message": Message,
+        "ClientID": 255,
+        "EndoType": EndoType
+    }
+}
+
+
 module.exports = router;

@@ -474,6 +474,13 @@
           },
           {
             "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserID",
+            "description": "<p>用户ID</p>"
+          },
+          {
+            "group": "Parameter",
             "type": "int",
             "optional": false,
             "field": "EndoType",
@@ -805,7 +812,7 @@
       "examples": [
         {
           "title": "Success-Response:",
-          "content": "{\n     \"code\": 0,\n     \"data\": {},\n     \"msg\": \"\"\n}",
+          "content": "{\n     \"code\": 0,\n     \"data\": {\"ID\":ID},\n     \"msg\": \"\"\n}",
           "type": "json"
         }
       ]
@@ -982,6 +989,27 @@
             "optional": false,
             "field": "ID",
             "description": "<p>内部ID</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserName",
+            "description": "<p>操作员用户名</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserID",
+            "description": "<p>用户ID</p>"
           }
         ]
       }
@@ -1163,6 +1191,55 @@
     "sampleRequest": [
       {
         "url": "http://localhost:3000/case/listDicts"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "get",
+    "url": "/report/reportExists",
+    "title": "2.5 查询服务端是否已经生成报告",
+    "description": "<p>查询服务端是否已经生成报告</p>",
+    "name": "reportExists",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "ID",
+            "description": "<p>病例ID</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {\"exists\": true, \"url\": \"xxx.bmp\"},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/reportExists"
       }
     ],
     "version": "1.0.0",
@@ -1382,7 +1459,7 @@
   {
     "type": "post",
     "url": "/report.aspx",
-    "title": "2.3 报告搜索",
+    "title": "2.3 报告搜索 (用于微信小程序)",
     "description": "<p>报告搜索</br></br><text style=\"color:#EA0000\">特别说明：OutpatientID、CardID、InsuranceID 三选一必传, 另外两个传空字符串或不传</text></p>",
     "name": "searchReport",
     "group": "病例（Case）",
@@ -1449,7 +1526,70 @@
     },
     "sampleRequest": [
       {
-        "url": "http://localhost:3000//report.aspx?Name=xxx&Sex=xx"
+        "url": "http://localhost:3000/report.aspx?Name=xxx&Sex=xx"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "post",
+    "url": "/report/selectImages",
+    "title": "2.4 报告图片选择 (用于打印报告)",
+    "description": "<p>报告图片选择</p>",
+    "name": "selectImages",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "CaseID",
+            "description": "<p>病例ID</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "oldImageIDs",
+            "description": "<p>修改前图片ID字符串，最多选择9张图片，多个图片ID用 英文的',' 分割, 例子：230,220,245</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "newImageIDs",
+            "description": "<p>修改后图片ID字符串，同上</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/selectImages"
       }
     ],
     "version": "1.0.0",
@@ -1489,17 +1629,24 @@
           },
           {
             "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserID",
+            "description": "<p>用户ID</p>"
+          },
+          {
+            "group": "Parameter",
             "type": "string",
             "optional": true,
             "field": "Name",
             "description": "<p>姓名</p>"
-          },
-          {
-            "group": "Parameter",
-            "type": "int",
-            "optional": true,
-            "field": "EndoType",
-            "description": "<p>工作站类型</p>"
           },
           {
             "group": "Parameter",
@@ -1857,6 +2004,27 @@
             "optional": false,
             "field": "ID",
             "description": "<p>内部ID</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserName",
+            "description": "<p>操作员用户名</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "int",
+            "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserID",
+            "description": "<p>用户ID</p>"
           },
           {
             "group": "Parameter",

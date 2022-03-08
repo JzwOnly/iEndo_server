@@ -56,6 +56,7 @@ const caseSchema = function(type) {
             Ctology: {type: "string", maxLength:200}, // 细胞学
             Pathology: {type: "string", maxLength:200}, // 病理学
             UserName: {type: "string", maxLength:50}, // 操作用户名
+            UserID: {type: ["integer", "string"]}, // 用户名ID （用于记录log）
             EndoType: {type: ["integer", "string"]}, // 工作站类型
             ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
             ClinicalDiagnosis: {type: "string", maxLength: 300}, // 临床诊断
@@ -63,14 +64,25 @@ const caseSchema = function(type) {
             CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
         },
         // required: ["Name", "CaseNo", "UserName", "EndoType"],
-        required: ["Name", "UserName", "EndoType"],
+        required: ["Name", "UserName", "EndoType", "UserID"],
         additionalProperties: false,
     };
     if (type == 'update') {
         targetCaseSchema["properties"]["ID"] = {type: ["integer", "string"]};
-        targetCaseSchema["required"] = ["ID", "CaseNo", "UserName"];
+        targetCaseSchema["required"] = ["ID", "CaseNo", "UserName", "EndoType", "UserID"];
     }
     return targetCaseSchema
+}
+const caseInfoDeleteSchema = {
+    type: "object",
+    properties: {
+        ID: {type: ["integer", "string"]}, // 内部id
+        UserName: {type: "string"}, // 操作用户名（用于记录log）
+        UserID: {type: ["integer", "string"]}, // 用户名ID （用于记录log）
+        EndoType: {type: ["integer", "string"]}, // 工作站类型（用于记录log）
+    },
+    required: ["ID", "UserID", "UserName", "EndoType"],
+    additionalProperties: false,
 }
 const caseInfoSchema = {
     type: "object",
@@ -133,8 +145,21 @@ const caseHospitalSchema = {
         szTelephone: {type: "string", maxLength:30},
         szPostCode: {type: "string", maxLength:6},
         szTitle: {type: "string", maxLength:20},
+        UserName: {type: "string"}, // 操作用户名（用于记录log）
+        UserID: {type: ["integer", "string"]}, // 用户名ID （用于记录log）
+        EndoType: {type: ["integer", "string"]}, // 工作站类型（用于记录log）
     },
-    required: ["ID"],
+    required: ["ID", "UserID", "UserName", "EndoType"],
+    additionalProperties: false,
+}
+const selectImagesSchema = {
+    type: "object",
+    properties: {
+        CaseID: {type: ["integer", "string"]}, // 病例ID
+        oldImageIDs: {type: "string"}, // 修改前图片ID字符串
+        newImageIDs: {type: "string"}, // 修改后图片ID字符串
+    },
+    require: ["CaseID", "ImageIDs"],
     additionalProperties: false,
 }
 module.exports = {
@@ -143,5 +168,7 @@ module.exports = {
     caseInfoSchema,
     caseSearchSchema,
     caseHospitalSchema,
-    caseReportSearchSchema
+    caseReportSearchSchema,
+    selectImagesSchema,
+    caseInfoDeleteSchema
 };
