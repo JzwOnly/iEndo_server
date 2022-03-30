@@ -396,7 +396,7 @@ router.post('/case/add', function (req, res, next) {
                 return;
             }
             // 获取病历编号
-            var caseNo = yield __getCaseNoReq();
+            var caseNo = yield __getCaseNoReq(params.EndoType);
             caseObj["CaseNo"] = caseNo;
             // 新增 record_base
             const ID = yield __addCase(caseObj);
@@ -872,7 +872,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
             // 加载设备图片和视频静态文件
             var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
             let filename = 'DefaultLogo.jpg'
-            let logofilePath = path.join(config.logoPath, filename)
+            let logofilePath = path.join(config.root.logoPath, filename)
             fs.writeFile(logofilePath, data, (err) => {
                 if (err) { return res.send(responseTool({}, repError, '写入失败')) };
                 res.send(responseTool({}, repSuccess, repSuccessMsg))
@@ -1109,9 +1109,9 @@ function __getNextCaseNo(caseNo) {
     }
 }
 // 获取病例编号
-function __getCaseNoReq() {
+function __getCaseNoReq(endo_type) {
     return new Promise((resolve, reject) => {
-        var sqlStr = `select * from dbo.record_base where ID in (select max(ID) from dbo.record_base);`
+        var sqlStr = `select * from dbo.record_base where ID in (select max(ID) from dbo.record_base where EndoType=${endo_type});`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 reject(err)
@@ -1440,7 +1440,7 @@ function __updateImageSelect(oldImageIDs, newImageIDs) {
 function __isExistsReport(caseID) {
     // 加载设备图片和视频静态文件
     var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
-    let caseReportDirPath = path.join(config.imagesPath, `${caseID}/Report`)
+    let caseReportDirPath = path.join(config.root.imagesPath, `${caseID}/Report`)
     console.log(caseReportDirPath)
     return new Promise((resolve, reject) => {
         fs.access(caseReportDirPath, function(err) {

@@ -223,6 +223,13 @@ define({ "api": [
             "group": "Parameter",
             "type": "string",
             "optional": false,
+            "field": "UserID",
+            "description": "<p>当前用户ID</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
             "field": "CurrentRelo",
             "description": "<p>当前用户权限</p>"
           },
@@ -442,6 +449,55 @@ define({ "api": [
     "sampleRequest": [
       {
         "url": "http://localhost:3000/users/login"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/users.js",
+    "groupTitle": "User"
+  },
+  {
+    "type": "get",
+    "url": "/users/purview",
+    "title": "获取用户权限",
+    "description": "<p>获取用户权限</p>",
+    "name": "purview",
+    "group": "User",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "UserID",
+            "description": "<p>用户ID</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n    \"code\" : \"1\",\n    \"data\" : {\n         \"CanEdit\": true,\n    },\n    \"msg\" : \"请求成功\",\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/users/purview"
       }
     ],
     "version": "1.0.0",

@@ -24,9 +24,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // 加载设备图片和视频静态文件
 var config = ini.parse(fs.readFileSync('./deviceConfig.ini', 'utf-8'));
-app.use(express.static(config.imagesPath));
-app.use(express.static(config.videosPath));
-app.use(express.static(config.logoPath));
+app.use(express.static(config.root.imagesPath));
+app.use(express.static(config.root.videosPath));
+app.use(express.static(config.root.logoPath));
 
 app.use('/', indexRouter);
 app.use('/', usersRouter);
@@ -47,6 +47,6 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-process.env.PORT = config.httpPort;
+process.env.PORT = config.root.httpPort;
 
 module.exports = app;

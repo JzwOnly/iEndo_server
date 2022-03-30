@@ -3,7 +3,7 @@ var router = express.Router();
 var db = require('../server');
 // var co = require('co')
 var co = require('co');
-const { responseTool, repSuccess, repSuccessMsg, repError, repErrorMsg } = require('../lib/responseData');
+const { responseTool, repSuccess, repSuccessMsg, repError, repErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 const { sql } = require('../server');
 
 
@@ -39,7 +39,13 @@ router.post('/users/login', function (req, res, next) {
       if (result.result == false) {
         res.send(responseTool({}, repError, result.msg))
       } else {
-        var data = { "userID": result.userID, "Role": result.role };
+        let purview = yield __getPurview(result.userID)
+        var data = {};
+        if (purview) {
+          data = { "userID": result.userID, "Role": result.role, "purview": purview};
+        } else {
+          data = { "userID": result.userID, "Role": result.role, "purview": {}};
+        }
         res.send(responseTool(data, repSuccess, repSuccessMsg));
       }
     } catch (error) {
@@ -114,9 +120,63 @@ function getCheckData(mUserName,mPassword){
 
 }
 
+/**
+ * @api {get} /users/purview 获取用户权限
+ * @apiDescription 获取用户权限
+ * @apiName purview
+ * @apiGroup User 
+ * @apiParam {string} UserID 用户ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *           "CanEdit": true,
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/purview
+ * @apiVersion 1.0.0
+ */
+ router.get('/users/purview', function (req, res, next) {
+  co(function* () {
+    try {
+      var params = req.query || req.params;
+      if (params.UserID == null) {
+        res.send(responseTool({}, repError, '用户ID不能为空'))
+      } else {
+        let purview = yield __getPurview(params["UserID"])
+        if (purview) {
+          res.send(responseTool(purview, repSuccess, repSuccessMsg))
+        } else {
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
+        }
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, repParamsErrorMsg))
+    }
+  });
+});
 
-
-
+function __getPurview(UserID) {
+  return new Promise((resolve, result) => {
+    var sqlString = `select * from Purview where UserID=${UserID};`;
+    db.sql(sqlString, function (err, result) {
+      if (err) {
+        reject(false);
+        return;
+      } else {
+        let data = result['recordset']
+        // responseTool(data, repSuccess, repSuccessMsg)
+        if (data.length > 0) {
+          resolve(data[0]);
+        } else {
+          resolve(null);
+        }
+      }
+    });
+  });
+}
 
 /*********************************************************************************修改自己的密码*************************************************************************************/
 /**
@@ -141,17 +201,21 @@ function getCheckData(mUserName,mPassword){
  */
 router.post('/users/changeMyselfPassword', function (req, res, next) {
   co(function* () {
-    var mUserID = req.body.UserID;
-    var mOldPassword = req.body.oldPassword;
-    var mNewPassword = req.body.newPassword;
-    //查询原来密码是否正确
-    var mOldPasswordStatue = yield getCurrentPasswordStatue(mUserID, mOldPassword);
-    if (mOldPasswordStatue == mOldPassword) {
-      //修改密码
-      yield setNewPassword(mUserID, mNewPassword)
-      res.send(responseTool({}, repSuccess, repSuccessMsg))
-    } else {
-      res.send(responseTool({}, repError, '原密码不正确'))
+    try {
+      var mUserID = req.body.UserID;
+      var mOldPassword = req.body.oldPassword;
+      var mNewPassword = req.body.newPassword;
+      //查询原来密码是否正确
+      var mOldPasswordStatue = yield getCurrentPasswordStatue(mUserID, mOldPassword);
+      if (mOldPasswordStatue == mOldPassword) {
+        //修改密码
+        yield setNewPassword(mUserID, mNewPassword)
+        res.send(responseTool({}, repSuccess, repSuccessMsg))
+      } else {
+        res.send(responseTool({}, repError, '原密码不正确'))
+      }
+    } catch {
+      res.send(responseTool({}, repError, '参数错误'))
     }
   });
 
@@ -190,6 +254,7 @@ function setNewPassword(mUserID, mNewPassword) {
     db.sql(sqlString, function (err, result) {
       if (err) {
         reject(false);
+        console.log("修改密码==========失败", err);
         return;
       } else {
         let data = result['recordset']
@@ -227,27 +292,33 @@ function setNewPassword(mUserID, mNewPassword) {
  */
 router.post('/users/changeElsePassword', function (req, res, next) {
   co(function* () {
-    var mUserID = req.body.userID;
-    var mChangedUserID = req.body.changedUserID;
-    var mUserRelo = req.body.userRelo;
-    var mChangedUserRelo = req.body.changedUserRelo;
-    var mChangedPassword = req.body.changedPassword;
-    //只有超级管理员和管理员可以修改其他人密码的权限--- 0超级管理员 1管理员  2操作员 3 查询员
-    console.log("V========== 开始", mUserRelo, mChangedUserRelo);
-    if (parseInt(mUserRelo) == 0) {  //超级管理员
-      //修改密码
-      yield setNewPassword(mChangedUserID, mChangedPassword);
-      res.send(responseTool({}, repSuccess, repSuccessMsg));
-    } else if (parseInt(mUserRelo) == 1) {//管理员
-      if (mUserRelo == mChangedUserRelo) {
-        //修改密码
-        yield setNewPassword(mChangedUserID, mChangedPassword);
-        res.send(responseTool({}, repSuccess, repSuccessMsg));
+    /**
+     * editor: jiangziwei
+     * time: 2022-03-24 14:23
+     */
+    try {
+      var mUserID = req.body.userID;
+      var mChangedUserID = req.body.changedUserID;
+      var mChangedPassword = req.body.changedPassword;
+      if (parseInt(mChangedUserID) == 1) {
+        // 超级管理员不能被修改
+        res.send(responseTool({}, repError, "超级管理员密码无法修改"));
       } else {
-        res.send(responseTool({}, repError, "没有修改权限~"));
+        let purview = yield __getPurview(mUserID)
+        let canChange = false
+        if (purview.hasOwnProperty("CanPsw")) {
+          canChange = purview["CanPsw"]
+        }
+        if (canChange) {
+          //修改密码
+          yield setNewPassword(mChangedUserID, mChangedPassword);
+          res.send(responseTool({}, repSuccess, repSuccessMsg));
+        } else {
+          res.send(responseTool({}, repError, "当前账号无权限修改密码"));
+        }
       }
-    } else {//没有权限用户
-      res.send(responseTool({}, repError, "没有修改权限~"));
+    } catch {
+      res.send(responseTool({}, repError, "参数错误"));
     }
   });
 });
@@ -294,6 +365,7 @@ router.get('/users/list', function (req, res, next) {
  * @apiDescription 添加新用户 
  * @apiName createUser
  * @apiGroup User 
+ * @apiParam {string} UserID 当前用户ID
  * @apiParam {string} CurrentRelo 当前用户权限
  * @apiParam {string} CreateRelo 新用户的权限
  * @apiParam {string} UserName 新用户的名字
@@ -315,51 +387,59 @@ router.get('/users/list', function (req, res, next) {
  */
 
 router.post('/users/createUser', function (req, res, next) {
-
-  var mCurrentRelo = req.body.CurrentRelo;  //只有超级管理员0或者管理员1的时候才可以添加用户
-  var mCreateRelo = req.body.CreateRelo;
-  var mUserName = req.body.UserName;
-  var mPassword = req.body.Password;
-  var mDes = req.body.Des;
-  var mCanSUE = req.body.CanSUE;
-
   co(function* () {
-    // try{
-    if (0 == parseInt(mCurrentRelo) || 1 == parseInt(mCurrentRelo)) {
-
-      if (parseInt(mCreateRelo) >= 1 || parseInt(mCreateRelo) <= 3) {
-        // 添加用户表格
-        yield createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE);
-        var createUserID = yield getCreateUserID(mUserName, mPassword);
-        yield createUserWithPurview(mCreateRelo, createUserID);
-        console.log("添加相关联的权限表格===添加相关联的权限表格=======OK=======");
-        res.send(responseTool({}, repSuccess, repSuccessMsg))
-        // 添加相关联的权限表格
-
-      } else if (0 == mCreateRelo) { //超级管理员有且唯一
-        res.send(responseTool({}, repError, "超级管理员有且唯一"));
-        return;
-      } else {
-        res.send(responseTool({}, repError, "未知错误"));
+    // try {
+      var UserID = req.body.UserID;
+      var mCurrentRelo = req.body.CurrentRelo;
+      var mCreateRelo = req.body.CreateRelo;
+      var mUserName = req.body.UserName;
+      var mPassword = req.body.Password;
+      var mDes = req.body.Des;
+      var mCanSUE = req.body.CanSUE;
+      let purview = yield __getPurview(UserID)
+      let canAdd = false
+      if (purview.hasOwnProperty("UserMan")) {
+        canAdd = purview["UserMan"]
       }
-
-
-
-    } else {
-      res.send(responseTool({}, repError, repErrorMsg));
-    }
-  }
-    //   catch (error) {
-    //   res.send(responseTool({}, repError, "参数错误"))
-    //   return
+      if (canAdd) {
+        // 查询UserName 是否符合唯一且不能是Admin
+        let isExist = yield __queryUserWithUsername(mUserName)
+        if (!isExist && mUserName.toLowerCase() !== "Admin".toLowerCase()) {
+          // 添加用户表格
+          yield createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE);
+          var createUserID = yield getCreateUserID(mUserName, mPassword);
+          yield createUserWithPurview(parseInt(mCreateRelo), createUserID);
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
+        } else {
+          res.send(responseTool({}, repError, "用户名已存在"));
+        }
+      } else {
+        res.send(responseTool({}, repError, "当前账号无权限添加账号"));
+      }
+    // } catch {
+    //   res.send(responseTool({}, repError, "参数错误"));
     // }
-
-
-    // }
-  )
+  })
 
 });
-
+// 通过用户名查询用户是否存在
+function __queryUserWithUsername(username) {
+  return new Promise((resolve, reject) => {
+    var sqlStr = `select * from users where UserName='${username}'`;
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(false)
+      } else {
+        var data = result['recordset']
+        if (data.length == 0) {
+          resolve(false)
+        } else {
+          resolve(true)
+        }
+      }
+    });
+  })
+}
 // 添加用户表格
 function createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE) {
   return new Promise((resolve, reject) => {
@@ -378,10 +458,6 @@ function createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE) {
 
       }
     });
-
-
-
-
   })
 }
 
@@ -415,64 +491,41 @@ function createUserWithPurview(mCreateRelo, createUserID) {
     //1-管理员
     var sqlStr01 = `update  dbo.Purview set UserMan='1',CanPsw='1',CanNew='1',CanEdit='1',CanDelete='1',CanPrint='1',
     ReportStyle='1',DictsMan='1',GlossaryMan='1',TempletMan='1',HospitalInfo='1',CanBackup='1',ViewBackup='1',
-    VideoSet='1',OnlySelf='0',UnPrinted='0',FtpSet='0',ChangeDepartment='0',ExportRecord='0',ExportImage='0',ExportVideo='0',
-    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='1' where UserID =${createUserID};`
+    VideoSet='1',OnlySelf='0',UnPrinted='0',FtpSet='0',ChangeDepartment='1',ExportRecord='1',ExportImage='1',ExportVideo='1',
+    DeviceSet='1',SeatAdjust='1',SnapVideoRecord='1',LiveStream='1',Role='0' where UserID =${createUserID};`
 
     //2-操作员
-    var sqlStr02 = `update  dbo.Purview set UserMan='0',CanPsw='1',CanNew='1',CanEdit='1',CanDelete='1',CanPrint='1',
+    var sqlStr02 = `update  dbo.Purview set UserMan='0',CanPsw='0',CanNew='1',CanEdit='1',CanDelete='1',CanPrint='1',
     ReportStyle='1',DictsMan='1',GlossaryMan='1',TempletMan='1',HospitalInfo='0',CanBackup='1',ViewBackup='1',
     VideoSet='0',OnlySelf='1',UnPrinted='0',FtpSet='0',ChangeDepartment='0',ExportRecord='0',ExportImage='0',ExportVideo='0',
-    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='2' where UserID =${createUserID};`;
+    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='1' where UserID =${createUserID};`;
 
     //3-查询员
     var sqlStr03 = `update  dbo.Purview set UserMan='0',CanPsw='0',CanNew='0',CanEdit='0',CanDelete='0',CanPrint='1',
     ReportStyle='0',DictsMan='0',GlossaryMan='0',TempletMan='0',HospitalInfo='0',CanBackup='0',ViewBackup='1',
     VideoSet='0',OnlySelf='0',UnPrinted='0',FtpSet='0',ChangeDepartment='0',ExportRecord='0',ExportImage='0',ExportVideo='0',
-    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='3' where UserID =${createUserID};`;
+    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='2' where UserID =${createUserID};`;
 
     console.log("权限相关==01====mCreateRelo=== ", mCreateRelo);
-
+    var finalSql = ""
     //1-管理员，2-操作员，3-查询员
-    if (1 == mCreateRelo) {
-      console.log("权限相关==01======== ");
-      db.sql(sqlStr01, function (err, result) {
-        if (err) {
-          console.log("权限相关==01======== ", err);
-          reject(false)
-          return;
-        } else {
-          console.log("权限相关==01======== ", result);
-          resolve(true);
-        }
-      });
-    } else if (2 == mCreateRelo) {
-      console.log("权限相关==02======== ");
-      db.sql(sqlStr02, function (err, result) {
-        if (err) {
-          reject(false)
-          console.log("权限相关==02======== ", err);
-
-          return;
-        } else {
-          console.log("权限相关==02======== ", result);
-          resolve(true);
-        }
-      });
-    } else if (3 == mCreateRelo) {
-      console.log("权限相关==03======== ");
-      db.sql(sqlStr03, function (err, result) {
-        if (err) {
-          console.log("权限相关==03======== ", err);
-          reject(false)
-          return;
-        } else {
-          console.log("权限相关==03======== ", result);
-          resolve(true);
-        }
-      });
+    if (0 == mCreateRelo) {
+      finalSql = sqlStr01
+    } else if (1 == mCreateRelo) {
+      finalSql = sqlStr02
+    } else {
+      finalSql = sqlStr03
     }
-
-
+    db.sql(finalSql, function (err, result) {
+      if (err) {
+        console.log("权限相关==01======== ", err);
+        reject(false)
+        return;
+      } else {
+        console.log("权限相关==01======== ", result);
+        resolve(true);
+      }
+    });
   })
 
 }
@@ -500,60 +553,37 @@ function createUserWithPurview(mCreateRelo, createUserID) {
  * @apiVersion 1.0.0
  */
 router.post('/users/deleteUserById', function (req, res, next) {
-
-  var mCurrentUserID = req.body.CurrentUserID;
-  var mDeleteUserID = req.body.DeleteUserID;
-  var nCurrentRelo = req.body.CurrentRelo;
   co(function* () {
     try {
-      console.log("mDeleteUserID=====" + mDeleteUserID)
-      // 查询被删除用户是否存在
-      var mExist = yield getDeleteDataExist(mDeleteUserID);
-      var mExistCurrent = yield getDeleteDataExist(mCurrentUserID);
-      // 查询被删除用户权限
-      var mDeletedRole = yield getCurrentRole(mDeleteUserID);
-      console.log("mExist=====" + mExist)
-      console.log("mExistCurrent=====" + mExistCurrent)
-      console.log("mDeletedRole=====" + mDeletedRole)
-      if (mExist && mExistCurrent) {
-        //自己不能删除自己
-        if (parseInt(mDeleteUserID) == 1) { //超级用户不能被删除
-          res.send(responseTool({}, repError, '超级用户不能被删除'))
-          return
-        }
-        if (parseInt(nCurrentRelo) == 0) {//超级管理员   
-          if (mCurrentUserID != mDeleteUserID) {
-            //删除用户
-            var deleteStatue = yield deleteUserById(mDeleteUserID)
-            //删除用户所关联的权限表格 
-            var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
-            if (deleteStatue && deleteStatueWithPurview) {
-              res.send(responseTool({}, repSuccess, repSuccessMsg))
-            } else {
-              res.send(responseTool({}, repError, '超级管理员，删除错误'))
-            }
-          } else {
-            res.send(responseTool({}, repError, '自己不能删除自己'))
-          }
-        } else if (parseInt(nCurrentRelo) == 1) {//管理员，自己不能删除自己
-          if (mCurrentUserID == mDeleteUserID) {
-            res.send(responseTool({}, repError, '自己不能删除自己'))
-          } else if (parseInt(mDeleteUserID) > 1) {
-            //删除用户
-            var deleteStatue = yield deleteUserById(mDeleteUserID)
-            //删除用户所关联的权限表格 
-            var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
-            if (deleteStatue) {
-              res.send(responseTool({}, repSuccess, repSuccessMsg))
-            } else {
-              res.send(responseTool({}, repError, '管理员，删除错误'))
-            }
-          }
-        } else {
-          res.send(responseTool({}, repError, '不具备删除权限'))
-        }
+      /**
+       * 1. 超级管理员不能删除
+       * 2. 自己不能删除自己
+       * 3. 有用户管理权限就可以删除
+       */
+      var mCurrentUserID = req.body.CurrentUserID;
+      var mDeleteUserID = req.body.DeleteUserID;
+      var nCurrentRelo = req.body.CurrentRelo;
+      if (parseInt(mDeleteUserID) == 1) {
+        res.send(responseTool({}, repError, '超级管理员不能被删除'))
       } else {
-        res.send(responseTool({}, repError, '请求参数错误'))
+        if (parseInt(mCurrentUserID) == parseInt(mDeleteUserID)) {
+          res.send(responseTool({}, repError, '当前登录为此用户，不能删除'))
+        } else {
+          let purview = yield __getPurview(mCurrentUserID)
+          let canDelete = false
+          if (purview.hasOwnProperty("UserMan")) {
+            canDelete = purview["UserMan"]
+          }
+          if (canDelete) {
+            //删除用户
+            var deleteStatue = yield deleteUserById(mDeleteUserID)
+            //删除用户所关联的权限表格 
+            var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
+            res.send(responseTool({}, repSuccess, repSuccessMsg))
+          } else {
+            res.send(responseTool({}, repError, '当前账号无权限删除用户'))
+          }
+        }
       }
     } catch (error) {
       res.send(responseTool({}, repError, "参数错误"))
@@ -596,38 +626,6 @@ function deleteUserByIdWithPurview(mDeleteUserID) {
   })
 }
 
-
-//查询删除用户是否存在
-function getDeleteDataExist(mDeleteUserID) {
-  return new Promise((resolve, reject) => {
-    // var sqlChangeUserIDStr = `select userID from users where UserID='${ChangeUserID}';`  //字符串
-    var sqlChangeUserIDStr = `select userID from users where UserID=${mDeleteUserID};`  //bigint  这里是bit
-    console.log("被修改用户===非空参数====被修改用户不存在====getReadUseridIfExist" + mDeleteUserID);
-    db.sql(sqlChangeUserIDStr, function (err, result) {
-      if (err) {
-        //被修改用户不存在
-        reject(false)
-        console.log("被修改用户===非空参数====被修改用户不存在====getReadUseridIfExist===" + err);
-        return;
-      } else {
-        var data = result['recordset']
-        console.log("getReadUseridIfExist==被修改用户ID==OK");
-        if (Array.isArray(data)) {
-          if (data.length == 0) {
-            resolve(false)
-            console.log("getReadUseridIfExist==被修改用户ID==1231231231");
-          } else {
-            console.log("getReadUseridIfExist==被修改用户ID==不存在");
-            // responseTool(data, repSuccess, repSuccessMsg)
-            resolve(true)
-
-          }
-        }
-
-      }
-    });
-  })
-}
 /*********************************************************************************修改权限*************************************************************************************/
 /**
  *修改权限
@@ -658,141 +656,35 @@ function getDeleteDataExist(mDeleteUserID) {
 * @apiVersion 1.0.0
 */
 router.post('/users/changePurview', function (req, res, nest) {
-  //查询当前用户权限，是否比要删除的用户权限大，
-  //再次查询要删除的用户是否存在
-  var CurrentUserID = req.body.CurrentUserID
-  var ChangeUserID = req.body.ChangeUserID
-  var CurrentUserName = req.body.UserName
-  var Relo = req.body.Relo
   co(function* () {
     try {
-      if(parseInt(ChangeUserID)==1){
-        res.send(responseTool({}, repError, "超级用户权限不能被修改！"))
-        console.log("当前用户名-=======超级用户权限不能更改==="+ChangeUserID )
-        return;
-      }
-      // 查询被修改用户是否存在
-      var useridIfEexist = yield getReadUseridIfExist(ChangeUserID);
-      // 超级用户才可以更改 ，因为Role 字段两者都为0状态不能区分，通过UserName=Adimn 和 Role=0来判断
-      // 获取当前登入用户权限
-      var currentRelostatue = yield getCurrentRole(CurrentUserID);
-      console.log("当前用户名-=======0===" + CurrentUserName)
-      console.log("当前用户权限-=========1===" + currentRelostatue)
-      console.log("被查询用户是否存在-========11===" + useridIfEexist)
-      if ((useridIfEexist && currentRelostatue == 0 && 'Admin' == CurrentUserName) || (useridIfEexist && currentRelostatue == 1)) {
-        var changeRelostatue = yield setChangeRole(ChangeUserID, Relo);
-        res.send(responseTool({}, repSuccess, repSuccessMsg))
+      var CurrentUserID = req.body.CurrentUserID
+      var ChangeUserID = req.body.ChangeUserID
+      var CurrentUserName = req.body.UserName
+      var Relo = req.body.Relo
+      /**
+      * 1. 超级管理员不能修改
+      * 2. 有用户管理权限就可以修改
+      */
+      if (parseInt(ChangeUserID) == 1) {
+        res.send(responseTool({}, repError, '超级管理员不能修改'))
       } else {
-        res.send(responseTool({}, repError, "无修改权限"))
+        let purview = yield __getPurview(CurrentUserID)
+        let canEdit = false
+        if (purview.hasOwnProperty("UserMan")) {
+          canEdit = purview["UserMan"]
+        }
+        if (canEdit) {
+          yield createUserWithPurview(parseInt(Relo), ChangeUserID);
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
+        } else {
+          res.send(responseTool({}, repError, '当前账号无权限修改用户角色'))
+        }
       }
     } catch (error) {
       res.send(responseTool({}, repError, "参数错误"))
     }
   })
-  // select userID,UserName from  users where UserID='111';
-
-
 });
-
-// 设置被修改用户的权限
-function setChangeRole(ChangeUserID, Relo) {
-  // update dbo.Purview set Role='1' where UserID = '22';
-  var sqlCurrentRole = "";
-  if (Relo == 0 || Relo == 1) {
-    sqlCurrentRole = `update dbo.Purview set CanNew=1, CanEdit=1, CanDelete=1, Role=${Relo} where UserID =${ChangeUserID};`
-  } else {
-    sqlCurrentRole = `update dbo.Purview set CanNew=0, CanEdit=0, CanDelete=0, Role=${Relo} where UserID =${ChangeUserID};`
-  }
-  return new Promise((resolve, reject) => {
-    db.sql(sqlCurrentRole, function (err, result) {
-      if (err) {
-        console.log("我的测试=======DDD2222=== 失败");
-        reject(false)
-      } else {
-        var data = result['recordset']
-        console.log("我的测试=======GGG2222=== 成功" + data);
-        resolve(true)
-
-      }
-
-    });
-
-  })
-}
-
-//获取当前用户权限
-function getCurrentRole(CurrentUserID) {
-  console.log("getCurrentRole==getCurrentRole==getCurrentRole");
-  return new Promise((resolve, reject) => {
-    // var sqlCurrentRole = `select Role from Purview where UserID = '${CurrentUserID}';`
-    var sqlChangeRole = `select Role from Purview where UserID = ${CurrentUserID};`
-    db.sql(sqlChangeRole, function (err, result) {
-      if (err) {
-        console.log("获取到当前数据====333");
-        reject(null)
-        console.log("getCurrentRole-err")
-      } else {
-        console.log("获取到当前数据====444");
-        var data = result['recordset']
-        console.log("getCurrentRole==getCurrentRole==getCurrentRole");
-        console.log(data)
-        if (data.length > 0) {
-          console.log("获取到当前数据====000");
-          var CurrentRole = data[0]['Role'];
-          resolve(CurrentRole)
-        } else {
-          console.log("获取到当前数据====111");
-          resolve(false)
-        }
-      }
-
-    });
-  })
-}
-
-//判断被修改用户是否存在
-function getReadUseridIfExist(ChangeUserID) {
-  return new Promise((resolve, reject) => {
-    // var sqlChangeUserIDStr = `select userID from users where UserID='${ChangeUserID}';`  //字符串
-    var sqlChangeUserIDStr = `select userID from users where UserID=${ChangeUserID};`  //bigint
-    console.log("被修改用户===非空参数====被修改用户不存在====getReadUseridIfExist" + ChangeUserID);
-    db.sql(sqlChangeUserIDStr, function (err, result) {
-      if (err) {
-        //被修改用户不存在
-        reject()
-        console.log("被修改用户===非空参数====被修改用户不存在====getReadUseridIfExist===" + err);
-        return;
-      } else {
-        var data = result['recordset']
-        console.log("getReadUseridIfExist==被修改用户ID==OK");
-        if (Array.isArray(data)) {
-          if (data.length == 0) {
-            resolve(false)
-            console.log("getReadUseridIfExist==被修改用户ID==1231231231");
-          } else {
-            console.log("getReadUseridIfExist==被修改用户ID==不存在");
-            // responseTool(data, repSuccess, repSuccessMsg)
-            resolve(true)
-
-          }
-        }
-
-      }
-    });
-  })
-}
-
-
-/**********************************************************************************************************************************************************************/
-
-// 异步转同步方法
-// co(function* (){
-//   try{
-
-//   }catch(error){
-//     res.send(responseTool({}, repError, "参数错误"))
-//   }
-
-// })
 
 module.exports = router;
