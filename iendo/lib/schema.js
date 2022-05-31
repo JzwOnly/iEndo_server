@@ -162,6 +162,74 @@ const selectImagesSchema = {
     require: ["CaseID", "ImageIDs"],
     additionalProperties: false,
 }
+
+const purviewSchema = {
+    type: "object",
+    properties: {
+        oUserID: {type: ["integer", "string"]},               // 当前用户ID
+        cUserID: {type: ["integer", "string"]},               // 被修改用户ID
+        Role: {type: ["integer", "string"]},                  // 用户角色
+        CanUSE: {type: ["integer", "string"]},                // 是否激活
+        Des: {type: "string"},                                // 描述
+        UserMan: {type: ["integer", "string"]},               // 用户管理
+        CanPsw: {type: ["integer", "string"]},                // 设置口令
+        SnapVideoRecord: {type: ["integer", "string"]},       // 拍照录像
+        LiveStream: {type: ["integer", "string"]},            // 直播
+        DeviceSet: {type: ["integer", "string"]},             // 喷吸吹设置
+        CanNew: {type: ["integer", "string"]},                // 登记病人
+        CanEdit: {type: ["integer", "string"]},               // 修改病历
+        CanDelete: {type: ["integer", "string"]},             // 删除病历
+        CanPrint: {type: ["integer", "string"]},              // 打印病历
+        UnPrinted: {type: ["integer", "string"]},             // 仅限未打印病例
+        ExportRecord: {type: ["integer", "string"]},          // 导出病例
+        ExportVideo: {type: ["integer", "string"]},           // 导出录像
+        ExportImage: {type: ["integer", "string"]},           // 导出图片
+        CanBackup: {type: ["integer", "string"]},             // 备份数据
+        OnlySelf: {type: ["integer", "string"]},              // 仅限本人病例
+        VideoSet: {type: ["integer", "string"]},              // 视频设置
+        HospitalInfo: {type: ["integer", "string"]},          // 医院信息
+        ReportStyle: {type: ["integer", "string"]},           // 报告样式
+        SeatAdjust: {type: ["integer", "string"]},            // 座椅操作
+        WorkstationControl: {type: ["integer", "string"]},    // 工作站是否对设备有控制权
+        MobileControl: {type: ["integer", "string"]},         // 移动端是否对设备有控制权
+    },
+    require: ["oUserID", "cUserID", "Role"],
+    additionalProperties: false,
+}
+const addUserSchema = {
+    type: "object",
+    properties: {
+        UserID: {type: ["integer", "string"]},      // 当前用户ID
+        Role: {type: ["integer", "string"]},        // 用户角色
+        UserName: {type: "string"},                 // 用户名
+        Password: {type: "string"},                 // 密码
+        Des: {type: "string"},                      // 描述
+        CanUSE: {type: ["integer", "string"]},      // 是否激活
+        UserMan: {type: ["integer", "string"]},               // 用户管理
+        CanPsw: {type: ["integer", "string"]},                // 设置口令
+        SnapVideoRecord: {type: ["integer", "string"]},       // 拍照录像
+        LiveStream: {type: ["integer", "string"]},            // 直播
+        DeviceSet: {type: ["integer", "string"]},             // 喷吸吹设置
+        CanNew: {type: ["integer", "string"]},                // 登记病人
+        CanEdit: {type: ["integer", "string"]},               // 修改病历
+        CanDelete: {type: ["integer", "string"]},             // 删除病历
+        CanPrint: {type: ["integer", "string"]},              // 打印病历
+        UnPrinted: {type: ["integer", "string"]},             // 仅限未打印病例
+        ExportRecord: {type: ["integer", "string"]},          // 导出病例
+        ExportVideo: {type: ["integer", "string"]},           // 导出录像
+        ExportImage: {type: ["integer", "string"]},           // 导出图片
+        CanBackup: {type: ["integer", "string"]},             // 备份数据
+        OnlySelf: {type: ["integer", "string"]},              // 仅限本人病例
+        VideoSet: {type: ["integer", "string"]},              // 视频设置
+        HospitalInfo: {type: ["integer", "string"]},          // 医院信息
+        ReportStyle: {type: ["integer", "string"]},           // 报告样式
+        SeatAdjust: {type: ["integer", "string"]},            // 座椅操作
+        WorkstationControl: {type: ["integer", "string"]},    // 工作站是否对设备有控制权
+        MobileControl: {type: ["integer", "string"]},         // 移动端是否对设备有控制权
+    },
+    require: ["UserID", "Role", "UserName", "Password", "CanUSE"],
+    additionalProperties: false,
+}
 module.exports = {
     validateJson,
     caseSchema,
@@ -170,5 +238,7 @@ module.exports = {
     caseHospitalSchema,
     caseReportSearchSchema,
     selectImagesSchema,
-    caseInfoDeleteSchema
+    caseInfoDeleteSchema,
+    purviewSchema,
+    addUserSchema
 };

@@ -4,13 +4,56 @@ var db = require('../server');
 // var co = require('co')
 var co = require('co');
 const { responseTool, repSuccess, repSuccessMsg, repError, repErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
+const { validateJson, purviewSchema, addUserSchema } = require('../lib/schema');
 const { sql } = require('../server');
 
 
+/* GET users listing. */
+/*********************************************************************************用户列表数据*************************************************************************************/
+/**
+ * @api {get} /users/list 1.1 用户列表数据
+ * @apiDescription 用户列表数据
+ * @apiName list
+ * @apiGroup User 
+ * @apiParam {string} type （account-登录账号列表， manager-用户列表）
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *          "data" : "data",
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/list
+ * @apiVersion 1.0.0
+ */
+ router.get('/users/list', function (req, res, next) {
+  var params = req.query || req.params;
+  var type = params.type || "account"
+  //获取参数
+  var sqlStr = ""
+  if (type == "account") {
+    sqlStr = 'select u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, u.CanUSE, p.* from dbo.users u, dbo.Purview p where u.UserID = p.UserID and u.CanUSE=1;';
+  } else {
+    sqlStr = 'select u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, u.CanUSE, p.* from dbo.users u, dbo.Purview p where u.UserID = p.UserID;';
+  }
+  db.sql(sqlStr, function (err, result) {
+    if (err) {
+      res.send(responseTool({}, repError, repErrorMsg));
+      return;
+    } else {
+      var data = result['recordset']
+      // responseTool(data, repSuccess, repSuccessMsg)
+      res.send(responseTool(data, repSuccess, repSuccessMsg))
+    }
+  });
+});
 
 /*********************************************************************************用户登录*************************************************************************************/
+// #region 用户登录
 /**
- * @api {post} /users/login 用户登录
+ * @api {post} /users/login 1.2 用户登录
  * @apiDescription 用户登录
  * @apiName login
  * @apiGroup User 
@@ -29,6 +72,7 @@ const { sql } = require('../server');
  * @apiSampleRequest http://localhost:3000/users/login
  * @apiVersion 1.0.0
  */
+// #endregion
 router.post('/users/login', function (req, res, next) {
   co(function* () {
     var mUserName = req.body.UserName;
@@ -42,9 +86,9 @@ router.post('/users/login', function (req, res, next) {
         let purview = yield __getPurview(result.userID)
         var data = {};
         if (purview) {
-          data = { "userID": result.userID, "Role": result.role, "purview": purview};
+          data = { "userID": result.userID, "Role": result.role, "purview": purview };
         } else {
-          data = { "userID": result.userID, "Role": result.role, "purview": {}};
+          data = { "userID": result.userID, "Role": result.role, "purview": {} };
         }
         res.send(responseTool(data, repSuccess, repSuccessMsg));
       }
@@ -54,9 +98,475 @@ router.post('/users/login', function (req, res, next) {
   });
 });
 
+
+// #region 获取用户权限
+/**
+ * @api {get} /users/purview 1.3 获取用户权限
+ * @apiDescription 获取用户权限
+ * @apiName purview
+ * @apiGroup User 
+ * @apiParam {string} UserID 用户ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *           "CanEdit": true,
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/purview
+ * @apiVersion 1.0.0
+ */
+// #endregion
+ router.get('/users/purview', function (req, res, next) {
+  co(function* () {
+    try {
+      var params = req.query || req.params;
+      if (params.UserID == null) {
+        res.send(responseTool({}, repError, '用户ID不能为空'))
+      } else {
+        let purview = yield __getPurview(params["UserID"])
+        if (purview) {
+          res.send(responseTool(purview, repSuccess, repSuccessMsg))
+        } else {
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
+        }
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, repParamsErrorMsg))
+    }
+  });
+});
+
+// #region 新增用户
+/**
+ * @api {post} /users/addUser 1.4 新增用户
+ * @apiDescription 新增用户
+ * @apiName addUser
+ * @apiGroup User
+ * @apiParam {int} UserID 当前用户ID
+ * @apiParam {string} Role 新增的用户角色
+ * @apiParam {string} UserName 新用户的名字
+ * @apiParam {string} Password 新用户的密码
+ * @apiParam {string} Des 新用户的描述
+ * @apiParam {string} CanUSE 新用户是否激活1激活，0是未激活
+ * @apiParam {int} [UserMan] 用户管理 (0 关闭 1 开启, 下同) 
+ * @apiParam {int} [CanPsw] 设置口令
+ * @apiParam {int} [SnapVideoRecord] 拍照录像
+ * @apiParam {int} [LiveStream] 直播
+ * @apiParam {int} [DeviceSet] 喷吸吹设置
+ * @apiParam {int} [CanNew] 登记病人
+ * @apiParam {int} [CanEdit] 修改病历
+ * @apiParam {int} [CanDelete] 删除病历
+ * @apiParam {int} [CanPrint] 打印病历
+ * @apiParam {int} [UnPrinted] 仅限未打印病例
+ * @apiParam {int} [ExportRecord] 导出病例
+ * @apiParam {int} [ExportVideo] 导出录像
+ * @apiParam {int} [ExportImage] 导出图片
+ * @apiParam {int} [CanBackup] 备份数据
+ * @apiParam {int} [OnlySelf] 仅限本人病例
+ * @apiParam {int} [VideoSet] 视频设置
+ * @apiParam {int} [HospitalInfo] 医院信息
+ * @apiParam {int} [ReportStyle] 报告样式
+ * @apiParam {int} [SeatAdjust] 座椅操作
+ * @apiParam {int} [WorkstationControl] 工作站是否对设备有控制权
+ * @apiParam {int} [MobileControl] 移动端是否对设备有控制权
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/users/addUser
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.post('/users/addUser', function (req, res, next) {
+  var params = req.body
+  const schemaResult = validateJson(addUserSchema, params)
+  if (!schemaResult.result) {
+    res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+    // res.status(400).json(schemaResult.errors)
+    return;
+  }
+  co(function* () {
+    try {
+      // 修改用户ID
+      var UserID = params.UserID
+      // 被修改用户ID
+      var Role = params.Role
+      var UserName = params.UserName
+      var Password = params.Password
+      var Des = params.Des
+      var CanUSE = params.CanUSE
+      var purviewObj = {
+        UserMan: params.UserMan || 0,
+        CanPsw: params.CanPsw || 0,
+        SnapVideoRecord: params.SnapVideoRecord || 0,
+        LiveStream: params.LiveStream || 0,
+        DeviceSet: params.DeviceSet || 0,
+        CanNew: params.CanNew || 0,
+        CanEdit: params.CanEdit || 0,
+        CanDelete: params.CanDelete || 0,
+        CanPrint: params.CanPrint || 0,
+        UnPrinted: params.UnPrinted || 0,
+        ExportRecord: params.ExportRecord || 0,
+        ExportVideo: params.ExportVideo || 0,
+        ExportImage: params.ExportImage || 0,
+        CanBackup: params.CanBackup || 0,
+        OnlySelf: params.OnlySelf || 0,
+        VideoSet: params.VideoSet || 0,
+        HospitalInfo: params.HospitalInfo || 0,
+        ReportStyle: params.ReportStyle || 0,
+        SeatAdjust: params.SeatAdjust || 0,
+        WorkstationControl: params.WorkstationControl || 0,
+        MobileControl: params.MobileControl || 0
+      }
+
+      let purview = yield __getPurview(UserID)
+      let canEdit = false
+      if (purview.hasOwnProperty("UserMan")) {
+        canEdit = purview["UserMan"]
+      }
+      if (canEdit) {
+        let isExist = yield __queryUserWithUsername(UserName)
+        if (!isExist && UserName.toLowerCase() !== "Admin".toLowerCase()) {
+          // 新增用户, 有users表有触发器，会自动新增一条权限记录
+          yield __addUser(UserName, Password, Des, CanUSE)
+          let UserID = yield __getUserID(UserName, Password)
+          if (UserID) {
+            // 新增权限
+            yield __addPurview(purviewObj, UserID, Role)
+            res.send(responseTool({ "UserID": UserID, "UserName": UserName }, repSuccess, repSuccessMsg))
+          } else {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+          }
+        } else {
+          res.send(responseTool({}, repError, "用户名已存在"));
+        }
+      } else {
+        res.send(responseTool({}, repError, "当前账号无权限新增用户"));
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, repParamsErrorMsg))
+    }
+  })
+});
+
+/*********************************************************************************删除用户*************************************************************************************/
+// #region 删除用户
+/**
+ * @api {post} /users/deleteUserById 1.5 删除用户
+ * @apiDescription 删除用户
+ * @apiName deleteUserById
+ * @apiGroup User 
+ * @apiParam {string} DeleteUserID 被修改用户ID
+ * @apiParam {string} CurrentUserID 当前用户ID
+ * @apiParam {string} CurrentRelo 当前权限
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *          "data" : "data",
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/deleteUserById
+ * @apiVersion 1.0.0
+ */
+// #endregion
+ router.post('/users/deleteUserById', function (req, res, next) {
+  co(function* () {
+    try {
+      /**
+       * 1. 超级管理员不能删除
+       * 2. 自己不能删除自己
+       * 3. 有用户管理权限就可以删除
+       */
+      var mCurrentUserID = req.body.CurrentUserID;
+      var mDeleteUserID = req.body.DeleteUserID;
+      var nCurrentRelo = req.body.CurrentRelo;
+      if (parseInt(mDeleteUserID) == 1) {
+        res.send(responseTool({}, repError, '超级管理员不能被删除'))
+      } else {
+        if (parseInt(mCurrentUserID) == parseInt(mDeleteUserID)) {
+          res.send(responseTool({}, repError, '当前登录为此用户，不能删除'))
+        } else {
+          let purview = yield __getPurview(mCurrentUserID)
+          let canDelete = false
+          if (purview.hasOwnProperty("UserMan")) {
+            canDelete = purview["UserMan"]
+          }
+          if (canDelete) {
+            //删除用户
+            var deleteStatue = yield deleteUserById(mDeleteUserID)
+            //删除用户所关联的权限表格 
+            var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
+            res.send(responseTool({}, repSuccess, repSuccessMsg))
+          } else {
+            res.send(responseTool({}, repError, '当前账号无权限删除用户'))
+          }
+        }
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, "参数错误"))
+    }
+  })
+})
+
+
+/*********************************************************************************修改自己的密码*************************************************************************************/
+// #region 修改自己的密码
+/**
+ * @api {post} /users/changeMyselfPassword 1.6 修改自己的密码
+ * @apiDescription 修改自己的密码
+ * @apiName changePassword
+ * @apiGroup User 
+ * @apiParam {string} UserID 自己的ID
+ * @apiParam {string} oldPassword 原来的密码
+ * @apiParam {string} newPassword 原来的密码
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *          "data" : "data",
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/changeMyselfPassword
+ * @apiVersion 1.0.0
+ */
+// #endregion
+ router.post('/users/changeMyselfPassword', function (req, res, next) {
+  co(function* () {
+    try {
+      var mUserID = req.body.UserID;
+      var mOldPassword = req.body.oldPassword;
+      var mNewPassword = req.body.newPassword;
+      //查询原来密码是否正确
+      var mOldPasswordStatue = yield getCurrentPasswordStatue(mUserID, mOldPassword);
+      if (mOldPasswordStatue == mOldPassword) {
+        //修改密码
+        yield setNewPassword(mUserID, mNewPassword)
+        res.send(responseTool({}, repSuccess, repSuccessMsg))
+      } else {
+        res.send(responseTool({}, repError, '原密码不正确'))
+      }
+    } catch {
+      res.send(responseTool({}, repError, '参数错误'))
+    }
+  });
+});
+
+/*********************************************************************************修改其他人的密码*************************************************************************************/
+// #region 修改其他人的密码
+/**
+ * @api {post} /users/changeElsePassword 1.7 修改其他人的密码
+ * @apiDescription 修改其他人的密码
+ * @apiName changeElsePassword
+ * @apiGroup User 
+ * @apiParam {string} userID 自己的ID
+ * @apiParam {string} changedUserID 被修改用户ID
+ * @apiParam {string} userRelo 自己的权限
+ * @apiParam {string} changedUserRelo 被修改用户的权限
+ * @apiParam {string} changedPassword 新密码
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *          "data" : "data",
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/changeElsePassword
+ * @apiVersion 1.0.0
+ */
+// #endregion
+ router.post('/users/changeElsePassword', function (req, res, next) {
+  co(function* () {
+    /**
+     * editor: jiangziwei
+     * time: 2022-03-24 14:23
+     */
+    try {
+      var mUserID = req.body.userID;
+      var mChangedUserID = req.body.changedUserID;
+      var mChangedPassword = req.body.changedPassword;
+      if (parseInt(mChangedUserID) == 1) {
+        // 超级管理员不能被修改
+        res.send(responseTool({}, repError, "超级管理员密码无法修改"));
+      } else {
+        let purview = yield __getPurview(mUserID)
+        let canChange = false
+        if (purview.hasOwnProperty("CanPsw")) {
+          canChange = purview["CanPsw"]
+        }
+        if (canChange) {
+          //修改密码
+          yield setNewPassword(mChangedUserID, mChangedPassword);
+          res.send(responseTool({}, repSuccess, repSuccessMsg));
+        } else {
+          res.send(responseTool({}, repError, "当前账号无权限修改密码"));
+        }
+      }
+    } catch {
+      res.send(responseTool({}, repError, "参数错误"));
+    }
+  });
+});
+
+// #region 修改用户信息和权限
+/**
+ * @api {post} /users/changePurviewDetail 1.8 修改用户信息和权限
+ * @apiDescription 修改用户信息和权限 (修改了详细权限，Role传入3自定义，需客户端控制)
+ * @apiName changePurviewDetail
+ * @apiGroup User
+ * @apiParam {int} oUserID 当前用户ID
+ * @apiParam {int} cUserID 被修改用户ID
+ * @apiParam {string} Role 被修改用户权限
+ * @apiParam {string} Des  被修改用户描述
+ * @apiParam {int} [CanUSE] 状态(0 冻结 1 激活)
+ * @apiParam {int} [UserMan] 用户管理 (0 关闭 1 开启, 下同) 
+ * @apiParam {int} [CanPsw] 设置口令
+ * @apiParam {int} [SnapVideoRecord] 拍照录像
+ * @apiParam {int} [LiveStream] 直播
+ * @apiParam {int} [DeviceSet] 喷吸吹设置
+ * @apiParam {int} [CanNew] 登记病人
+ * @apiParam {int} [CanEdit] 修改病历
+ * @apiParam {int} [CanDelete] 删除病历
+ * @apiParam {int} [CanPrint] 打印病历
+ * @apiParam {int} [UnPrinted] 仅限未打印病例
+ * @apiParam {int} [ExportRecord] 导出病例
+ * @apiParam {int} [ExportVideo] 导出录像
+ * @apiParam {int} [ExportImage] 导出图片
+ * @apiParam {int} [CanBackup] 备份数据
+ * @apiParam {int} [OnlySelf] 仅限本人病例
+ * @apiParam {int} [VideoSet] 视频设置
+ * @apiParam {int} [HospitalInfo] 医院信息
+ * @apiParam {int} [ReportStyle] 报告样式
+ * @apiParam {int} [SeatAdjust] 座椅操作
+ * @apiParam {int} [WorkstationControl] 工作站是否对设备有控制权
+ * @apiParam {int} [MobileControl] 移动端是否对设备有控制权
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/users/changePurviewDetail?ID=10
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.post('/users/changePurviewDetail', function (req, res, next) {
+  var params = req.body
+  const schemaResult = validateJson(purviewSchema, params)
+  if (!schemaResult.result) {
+    res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+    // res.status(400).json(schemaResult.errors)
+    return;
+  }
+  co(function* () {
+    try {
+      // 修改用户ID
+      var oUserID = params.oUserID
+      // 被修改用户ID
+      var cUserID = params.cUserID
+      var Role = params.Role
+      var CanUSE = params.CanUSE
+      var Des = params.Des
+      var purviewObj = {
+        UserMan: params.UserMan,
+        CanPsw: params.CanPsw,
+        SnapVideoRecord: params.SnapVideoRecord,
+        LiveStream: params.LiveStream,
+        DeviceSet: params.DeviceSet,
+        CanNew: params.CanNew,
+        CanEdit: params.CanEdit,
+        CanDelete: params.CanDelete,
+        CanPrint: params.CanPrint,
+        UnPrinted: params.UnPrinted,
+        ExportRecord: params.ExportRecord,
+        ExportVideo: params.ExportVideo,
+        ExportImage: params.ExportImage,
+        CanBackup: params.CanBackup,
+        OnlySelf: params.OnlySelf,
+        VideoSet: params.VideoSet,
+        HospitalInfo: params.HospitalInfo,
+        ReportStyle: params.ReportStyle,
+        SeatAdjust: params.SeatAdjust,
+        WorkstationControl: params.WorkstationControl,
+        MobileControl: params.MobileControl
+      }
+      if (parseInt(cUserID) == 1) {
+        res.send(responseTool({}, repError, '超级管理员不能修改'))
+      } else {
+        let purview = yield __getPurview(oUserID)
+        let canEdit = false
+        if (purview.hasOwnProperty("UserMan")) {
+          canEdit = purview["UserMan"]
+        }
+        if (canEdit) {
+          yield __updateUserInfo(cUserID, CanUSE, Des);
+          yield __updatePurviewDetail(purviewObj, cUserID, Role);
+          res.send(responseTool({}, repSuccess, repSuccessMsg))
+        } else {
+          res.send(responseTool({}, repError, '当前账号无权限修改用户角色'))
+        }
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, repParamsErrorMsg))
+    }
+  })
+});
+
+// #region 用户详情
+/**
+ * @api {get} /users/detail 1.9 用户详情
+ * @apiDescription 用户详情
+ * @apiName detail
+ * @apiGroup User 
+ * @apiParam {string} UserID 用户ID
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ *  {
+ *      "code" : "1",
+ *      "data" : {
+ *          "data" : "data",
+ *      },
+ *      "msg" : "请求成功",
+ *  }
+ * @apiSampleRequest http://localhost:3000/users/detail
+ * @apiVersion 1.0.0
+ */
+// #endregion
+ router.get('/users/detail', function (req, res, next) {
+  co(function* () {
+    var params = req.query || req.params;
+    var UserID = params.UserID
+    try {
+      let userInfo = yield __getUserInfo(UserID)
+      let purview = yield __getPurview(UserID)
+      if (userInfo) {
+        var data = { "user": userInfo, "purview": purview };
+        res.send(responseTool(data, repSuccess, repSuccessMsg));
+      } else {
+        res.send(responseTool(data, repError, "账号不存在"));
+      }
+    } catch (error) {
+      res.send(responseTool({}, repError, '参数错误'))
+    }
+  });
+});
+
 // 检查账号密码
-function getCheckData(mUserName,mPassword){
-  return new Promise((resolve,reject)=>{
+function getCheckData(mUserName, mPassword) {
+  return new Promise((resolve, reject) => {
     var sqlString = `select u.UserID, u.Password, p.Role, u.CanUSE from  dbo.Purview p, dbo.users u where u.UserName='${mUserName}' and u.UserID = p.UserID;`;
     db.sql(sqlString, function (err, result) {
       if (err) {
@@ -108,7 +618,7 @@ function getCheckData(mUserName,mPassword){
         //   reject(false);
         // }
         // // responseTool(data, repSuccess, repSuccessMsg)
-        
+
         // resolve(data);
       }
     });
@@ -119,45 +629,27 @@ function getCheckData(mUserName,mPassword){
 
 
 }
-
-/**
- * @api {get} /users/purview 获取用户权限
- * @apiDescription 获取用户权限
- * @apiName purview
- * @apiGroup User 
- * @apiParam {string} UserID 用户ID
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *           "CanEdit": true,
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/purview
- * @apiVersion 1.0.0
- */
- router.get('/users/purview', function (req, res, next) {
-  co(function* () {
-    try {
-      var params = req.query || req.params;
-      if (params.UserID == null) {
-        res.send(responseTool({}, repError, '用户ID不能为空'))
+// 获取用户详情
+function __getUserInfo(UserID) {
+  return new Promise((resolve, result) => {
+    var sqlString = `select u.UserID, u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, u.CanUSE, p.Role from dbo.Purview p, dbo.users u where u.UserID=p.UserID and u.UserID=${UserID};`;
+    db.sql(sqlString, function (err, result) {
+      if (err) {
+        reject(false);
+        return;
       } else {
-        let purview = yield __getPurview(params["UserID"])
-        if (purview) {
-          res.send(responseTool(purview, repSuccess, repSuccessMsg))
+        let data = result['recordset']
+        // responseTool(data, repSuccess, repSuccessMsg)
+        if (data.length > 0) {
+          resolve(data[0]);
         } else {
-          res.send(responseTool({}, repSuccess, repSuccessMsg))
+          resolve(null);
         }
       }
-    } catch (error) {
-      res.send(responseTool({}, repError, repParamsErrorMsg))
-    }
+    });
   });
-});
-
+}
+// 获取权限信息
 function __getPurview(UserID) {
   return new Promise((resolve, result) => {
     var sqlString = `select * from Purview where UserID=${UserID};`;
@@ -177,50 +669,6 @@ function __getPurview(UserID) {
     });
   });
 }
-
-/*********************************************************************************修改自己的密码*************************************************************************************/
-/**
- * @api {post} /users/changeMyselfPassword 修改密码
- * @apiDescription 修改密码
- * @apiName changePassword
- * @apiGroup User 
- * @apiParam {string} UserID 自己的ID
- * @apiParam {string} oldPassword 原来的密码
- * @apiParam {string} newPassword 原来的密码
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *          "data" : "data",
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/changeMyselfPassword
- * @apiVersion 1.0.0
- */
-router.post('/users/changeMyselfPassword', function (req, res, next) {
-  co(function* () {
-    try {
-      var mUserID = req.body.UserID;
-      var mOldPassword = req.body.oldPassword;
-      var mNewPassword = req.body.newPassword;
-      //查询原来密码是否正确
-      var mOldPasswordStatue = yield getCurrentPasswordStatue(mUserID, mOldPassword);
-      if (mOldPasswordStatue == mOldPassword) {
-        //修改密码
-        yield setNewPassword(mUserID, mNewPassword)
-        res.send(responseTool({}, repSuccess, repSuccessMsg))
-      } else {
-        res.send(responseTool({}, repError, '原密码不正确'))
-      }
-    } catch {
-      res.send(responseTool({}, repError, '参数错误'))
-    }
-  });
-
-});
-
 
 //查询原来密码是否正确
 function getCurrentPasswordStatue(mUserID, mOldPassword) {
@@ -266,162 +714,6 @@ function setNewPassword(mUserID, mNewPassword) {
   });
 }
 
-
-/*********************************************************************************修改其他人的密码*************************************************************************************/
-/**
- * @api {post} /users/changeElsePassword 修改其他人的密码
- * @apiDescription 修改其他人的密码
- * @apiName changeElsePassword
- * @apiGroup User 
- * @apiParam {string} userID 自己的ID
- * @apiParam {string} changedUserID 被修改用户ID
- * @apiParam {string} userRelo 自己的权限
- * @apiParam {string} changedUserRelo 被修改用户的权限
- * @apiParam {string} changedPassword 新密码
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *          "data" : "data",
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/changeElsePassword
- * @apiVersion 1.0.0
- */
-router.post('/users/changeElsePassword', function (req, res, next) {
-  co(function* () {
-    /**
-     * editor: jiangziwei
-     * time: 2022-03-24 14:23
-     */
-    try {
-      var mUserID = req.body.userID;
-      var mChangedUserID = req.body.changedUserID;
-      var mChangedPassword = req.body.changedPassword;
-      if (parseInt(mChangedUserID) == 1) {
-        // 超级管理员不能被修改
-        res.send(responseTool({}, repError, "超级管理员密码无法修改"));
-      } else {
-        let purview = yield __getPurview(mUserID)
-        let canChange = false
-        if (purview.hasOwnProperty("CanPsw")) {
-          canChange = purview["CanPsw"]
-        }
-        if (canChange) {
-          //修改密码
-          yield setNewPassword(mChangedUserID, mChangedPassword);
-          res.send(responseTool({}, repSuccess, repSuccessMsg));
-        } else {
-          res.send(responseTool({}, repError, "当前账号无权限修改密码"));
-        }
-      }
-    } catch {
-      res.send(responseTool({}, repError, "参数错误"));
-    }
-  });
-});
-
-
-/* GET users listing. */
-/*********************************************************************************用户列表数据*************************************************************************************/
-/**
- * @api {get} /users/list 用户列表数据
- * @apiDescription 用户列表数据
- * @apiName list
- * @apiGroup User 
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *          "data" : "data",
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/list
- * @apiVersion 1.0.0
- */
-router.get('/users/list', function (req, res, next) {
-  //获取参数 
-  var sqlStr = 'select u.UserName, u.Des, u.CreatedAt, u.LastLoginAt, u.LoginTimes, p.* from dbo.users u, dbo.Purview p where u.UserID = p.UserID and u.CanUSE=1;';
-  db.sql(sqlStr, function (err, result) {
-    if (err) {
-      res.send(responseTool({}, repError, repErrorMsg));
-      return;
-    } else {
-      var data = result['recordset']
-      // responseTool(data, repSuccess, repSuccessMsg)
-      res.send(responseTool(data, repSuccess, repSuccessMsg))
-    }
-  });
-
-});
-
-/*********************************************************************************添加新用户*************************************************************************************/
-/**
- * @api {post} /users/createUser 添加新用户
- * @apiDescription 添加新用户 
- * @apiName createUser
- * @apiGroup User 
- * @apiParam {string} UserID 当前用户ID
- * @apiParam {string} CurrentRelo 当前用户权限
- * @apiParam {string} CreateRelo 新用户的权限
- * @apiParam {string} UserName 新用户的名字
- * @apiParam {string} Password 新用户的密码
- * @apiParam {string} Des 新用户的描述
- * @apiParam {string} CanSUE 新用户是否激活1激活，0是未激活
- * 
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *          "data" : "data",
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/createUser
- * @apiVersion 1.0.0
- */
-
-router.post('/users/createUser', function (req, res, next) {
-  co(function* () {
-    // try {
-      var UserID = req.body.UserID;
-      var mCurrentRelo = req.body.CurrentRelo;
-      var mCreateRelo = req.body.CreateRelo;
-      var mUserName = req.body.UserName;
-      var mPassword = req.body.Password;
-      var mDes = req.body.Des;
-      var mCanSUE = req.body.CanSUE;
-      let purview = yield __getPurview(UserID)
-      let canAdd = false
-      if (purview.hasOwnProperty("UserMan")) {
-        canAdd = purview["UserMan"]
-      }
-      if (canAdd) {
-        // 查询UserName 是否符合唯一且不能是Admin
-        let isExist = yield __queryUserWithUsername(mUserName)
-        if (!isExist && mUserName.toLowerCase() !== "Admin".toLowerCase()) {
-          // 添加用户表格
-          yield createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE);
-          var createUserID = yield getCreateUserID(mUserName, mPassword);
-          yield createUserWithPurview(parseInt(mCreateRelo), createUserID);
-          res.send(responseTool({}, repSuccess, repSuccessMsg))
-        } else {
-          res.send(responseTool({}, repError, "用户名已存在"));
-        }
-      } else {
-        res.send(responseTool({}, repError, "当前账号无权限添加账号"));
-      }
-    // } catch {
-    //   res.send(responseTool({}, repError, "参数错误"));
-    // }
-  })
-
-});
 // 通过用户名查询用户是否存在
 function __queryUserWithUsername(username) {
   return new Promise((resolve, reject) => {
@@ -440,159 +732,6 @@ function __queryUserWithUsername(username) {
     });
   })
 }
-// 添加用户表格
-function createUser(mCreateRelo, mUserName, mPassword, mDes, mCanSUE) {
-  return new Promise((resolve, reject) => {
-
-    var sqlStr = `insert into users(UserName,Password,Des,CanUSE)values('${mUserName}','${mPassword}','${mDes}',${mCanSUE});`;
-    console.log("添加用户表格===添加用户表格====sqlStr===111====" + sqlStr);
-
-    db.sql(sqlStr, function (err, result) {
-      if (err) {
-        console.log("添加用户表格=======DDD2222=== 失败");
-        reject(false)
-      } else {
-        var data = result['recordset']
-        console.log("添加用户表格=======GGG2222=== 成功" + data);
-        resolve(true)
-
-      }
-    });
-  })
-}
-
-//获取刚刚创建用户的userID
-function getCreateUserID(mUserName, mPassword) {
-  return new Promise((resolve, reject) => {
-    // select UserID FROM users where UserName = 'DDD'and Password='202cb962ac59075b964b07152d234b60';
-    var sqlStr = `select UserID FROM users where UserName = '${mUserName}'and Password='${mPassword}';`;
-    db.sql(sqlStr, function (err, result) {
-      if (err) {
-        console.log("获取刚刚创建用户的userID=======DDD2222=== 失败");
-        reject(null)
-      } else {
-        console.log("获取刚刚创建用户的userID=======GGG2222=== 成功result====", result);
-        let data = result['recordset']
-        if (data.length > 0) {
-          data = data[0]["UserID"];
-        }
-        console.log("获取刚刚创建用户的userID=======GGG2222=== 成功", data);
-        resolve(data)
-      }
-    });
-
-  })
-
-}
-
-//更新新用户的权限表格
-function createUserWithPurview(mCreateRelo, createUserID) {
-  return new Promise((resolve, reject) => {
-    //1-管理员
-    var sqlStr01 = `update  dbo.Purview set UserMan='1',CanPsw='1',CanNew='1',CanEdit='1',CanDelete='1',CanPrint='1',
-    ReportStyle='1',DictsMan='1',GlossaryMan='1',TempletMan='1',HospitalInfo='1',CanBackup='1',ViewBackup='1',
-    VideoSet='1',OnlySelf='0',UnPrinted='0',FtpSet='0',ChangeDepartment='1',ExportRecord='1',ExportImage='1',ExportVideo='1',
-    DeviceSet='1',SeatAdjust='1',SnapVideoRecord='1',LiveStream='1',Role='0' where UserID =${createUserID};`
-
-    //2-操作员
-    var sqlStr02 = `update  dbo.Purview set UserMan='0',CanPsw='0',CanNew='1',CanEdit='1',CanDelete='1',CanPrint='1',
-    ReportStyle='1',DictsMan='1',GlossaryMan='1',TempletMan='1',HospitalInfo='0',CanBackup='1',ViewBackup='1',
-    VideoSet='0',OnlySelf='1',UnPrinted='0',FtpSet='0',ChangeDepartment='0',ExportRecord='0',ExportImage='0',ExportVideo='0',
-    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='1' where UserID =${createUserID};`;
-
-    //3-查询员
-    var sqlStr03 = `update  dbo.Purview set UserMan='0',CanPsw='0',CanNew='0',CanEdit='0',CanDelete='0',CanPrint='1',
-    ReportStyle='0',DictsMan='0',GlossaryMan='0',TempletMan='0',HospitalInfo='0',CanBackup='0',ViewBackup='1',
-    VideoSet='0',OnlySelf='0',UnPrinted='0',FtpSet='0',ChangeDepartment='0',ExportRecord='0',ExportImage='0',ExportVideo='0',
-    DeviceSet='0',SeatAdjust='0',SnapVideoRecord='0',LiveStream='0',Role='2' where UserID =${createUserID};`;
-
-    console.log("权限相关==01====mCreateRelo=== ", mCreateRelo);
-    var finalSql = ""
-    //1-管理员，2-操作员，3-查询员
-    if (0 == mCreateRelo) {
-      finalSql = sqlStr01
-    } else if (1 == mCreateRelo) {
-      finalSql = sqlStr02
-    } else {
-      finalSql = sqlStr03
-    }
-    db.sql(finalSql, function (err, result) {
-      if (err) {
-        console.log("权限相关==01======== ", err);
-        reject(false)
-        return;
-      } else {
-        console.log("权限相关==01======== ", result);
-        resolve(true);
-      }
-    });
-  })
-
-}
-
-
-/*********************************************************************************删除用户*************************************************************************************/
-/**
- * @api {post} /users/deleteUserById 删除用户
- * @apiDescription 删除用户
- * @apiName deleteUserById
- * @apiGroup User 
- * @apiParam {string} DeleteUserID 被修改用户ID
- * @apiParam {string} CurrentUserID 当前用户ID
- * @apiParam {string} CurrentRelo 当前权限
- * @apiSuccess {json} result
- * @apiSuccessExample {json} Success-Response:
- *  {
- *      "code" : "1",
- *      "data" : {
- *          "data" : "data",
- *      },
- *      "msg" : "请求成功",
- *  }
- * @apiSampleRequest http://localhost:3000/users/deleteUserById
- * @apiVersion 1.0.0
- */
-router.post('/users/deleteUserById', function (req, res, next) {
-  co(function* () {
-    try {
-      /**
-       * 1. 超级管理员不能删除
-       * 2. 自己不能删除自己
-       * 3. 有用户管理权限就可以删除
-       */
-      var mCurrentUserID = req.body.CurrentUserID;
-      var mDeleteUserID = req.body.DeleteUserID;
-      var nCurrentRelo = req.body.CurrentRelo;
-      if (parseInt(mDeleteUserID) == 1) {
-        res.send(responseTool({}, repError, '超级管理员不能被删除'))
-      } else {
-        if (parseInt(mCurrentUserID) == parseInt(mDeleteUserID)) {
-          res.send(responseTool({}, repError, '当前登录为此用户，不能删除'))
-        } else {
-          let purview = yield __getPurview(mCurrentUserID)
-          let canDelete = false
-          if (purview.hasOwnProperty("UserMan")) {
-            canDelete = purview["UserMan"]
-          }
-          if (canDelete) {
-            //删除用户
-            var deleteStatue = yield deleteUserById(mDeleteUserID)
-            //删除用户所关联的权限表格 
-            var deleteStatueWithPurview = yield deleteUserByIdWithPurview(mDeleteUserID)
-            res.send(responseTool({}, repSuccess, repSuccessMsg))
-          } else {
-            res.send(responseTool({}, repError, '当前账号无权限删除用户'))
-          }
-        }
-      }
-    } catch (error) {
-      res.send(responseTool({}, repError, "参数错误"))
-    }
-
-  })
-
-})
-
 
 // 删除用户
 function deleteUserById(mDeleteUserID) {
@@ -609,8 +748,8 @@ function deleteUserById(mDeleteUserID) {
     })
   })
 }
-// 删除用户--所关联的权限表格
 
+// 删除用户--所关联的权限表格
 function deleteUserByIdWithPurview(mDeleteUserID) {
   return new Promise((resolve, reject) => {
     var sqlStr = `delete from dbo.Purview where UserID=${mDeleteUserID};`;
@@ -626,65 +765,119 @@ function deleteUserByIdWithPurview(mDeleteUserID) {
   })
 }
 
-/*********************************************************************************修改权限*************************************************************************************/
-/**
- *修改权限
- * params:
- * 必填：当前用户UserID,UserName,被修改用户ChangeUserID，Relo 需要被修改的用户权限等级// 0超级管理员 1管理员  2操作员 3 查询员
- */
-
-/**
-* @api {post} /users/changePurview 修改权限
-* @apiDescription 
-* 修改权限
-* @apiName changePurview
-* @apiGroup User 
-* @apiParam {string} CurrentUserID 当前登入的用户ID
-* @apiParam {string} ChangeUserID 需要被修改权限的用户ID
-* @apiParam {string} UserName 当前登入的用户名字
-* @apiParam {string}  Relo 需要被修改的用户权限等级
-* @apiSuccess {json} result
-* @apiSuccessExample {json} Success-Response:
-*  {
-*      "code" : "1",
-*      "data" : {
-*          "data" : "data",
-*      },
-*      "msg" : "请求成功",
-*  }
-* @apiSampleRequest http://localhost:3000/users/changePurview
-* @apiVersion 1.0.0
-*/
-router.post('/users/changePurview', function (req, res, nest) {
-  co(function* () {
-    try {
-      var CurrentUserID = req.body.CurrentUserID
-      var ChangeUserID = req.body.ChangeUserID
-      var CurrentUserName = req.body.UserName
-      var Relo = req.body.Relo
-      /**
-      * 1. 超级管理员不能修改
-      * 2. 有用户管理权限就可以修改
-      */
-      if (parseInt(ChangeUserID) == 1) {
-        res.send(responseTool({}, repError, '超级管理员不能修改'))
-      } else {
-        let purview = yield __getPurview(CurrentUserID)
-        let canEdit = false
-        if (purview.hasOwnProperty("UserMan")) {
-          canEdit = purview["UserMan"]
-        }
-        if (canEdit) {
-          yield createUserWithPurview(parseInt(Relo), ChangeUserID);
-          res.send(responseTool({}, repSuccess, repSuccessMsg))
-        } else {
-          res.send(responseTool({}, repError, '当前账号无权限修改用户角色'))
-        }
+// 新增用户
+function __addUser(username, password, des, canUse) {
+  return new Promise((resolve, reject) => {
+    var sqlStr = `insert into users(UserName,Password,Des,CanUSE) values('${username}','${password}','${des}',${canUse});`
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(err)
+        return
       }
-    } catch (error) {
-      res.send(responseTool({}, repError, "参数错误"))
-    }
+      resolve(true)
+    });
   })
-});
+}
 
+// 获取用户ID
+function __getUserID(username, password) {
+  return new Promise((resolve, reject) => {
+    var sqlStr = `select UserID from users where UserName='${username}' and Password='${password}'`
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(err)
+        return
+      }
+      let records = result['recordset']
+      if (records.length > 0) {
+        resolve(records[0]["UserID"])
+      } else {
+        resolve(null)
+      }
+    });
+  })
+}
+
+// 新增用户权限
+function __addPurview(purviewObj, UserID, role) {
+  return new Promise((resolve, reject) => {
+    var sqlStr = ""
+    if (parseInt(role) == 0) {
+      // 管理员
+      // sqlStr = `update dbo.Purview set UserMan=1, CanPsw=1, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
+      // TempletMan=1, HospitalInfo=1, CanBackup=1, ViewBackup=1, VideoSet=1, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=1, ExportRecord=1,
+      // ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, WorkstationControl=1, MobileControl=1, Role=0 where UserID=${UserID}`;
+      sqlStr = `update dbo.Purview set UserMan=1, CanPsw=1, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
+      TempletMan=1, HospitalInfo=1, CanBackup=1, ViewBackup=1, VideoSet=1, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=1, ExportRecord=1,
+      ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, Role=0 where UserID=${UserID}`;
+    } else if (parseInt(role) == 1) {
+      // 操作员
+      // sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
+      // TempletMan=1, HospitalInfo=0, CanBackup=1, ViewBackup=1, VideoSet=0, OnlySelf=1, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
+      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=1 where UserID=${UserID}`;
+      sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
+      TempletMan=1, HospitalInfo=0, CanBackup=1, ViewBackup=1, VideoSet=0, OnlySelf=1, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
+      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=1 where UserID=${UserID}`;
+    } else if (parseInt(role) == 2) {
+      // 普通用户
+      // sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=0, CanEdit=0, CanDelete=0, CanPrint=1, ReportStyle=0, DictsMan=0, GlossaryMan=0,
+      // TempletMan=0, HospitalInfo=0, CanBackup=0, ViewBackup=1, VideoSet=0, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
+      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=2 where UserID=${UserID}`;
+      sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=0, CanEdit=0, CanDelete=0, CanPrint=1, ReportStyle=0, DictsMan=0, GlossaryMan=0,
+      TempletMan=0, HospitalInfo=0, CanBackup=0, ViewBackup=1, VideoSet=0, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
+      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=2 where UserID=${UserID}`;
+    } else {
+      // 自定义用户
+      // sqlStr = `update dbo.Purview set UserMan=${purviewObj.UserMan}, CanPsw=${purviewObj.CanPsw}, CanNew=${purviewObj.CanNew}, CanEdit=${purviewObj.CanEdit}, CanDelete=${purviewObj.CanDelete}, CanPrint=${purviewObj.CanPrint}, ReportStyle=${purviewObj.ReportStyle}, DictsMan=0, GlossaryMan=0,
+      // TempletMan=0, HospitalInfo=${purviewObj.HospitalInfo}, CanBackup=${purviewObj.CanBackup}, ViewBackup=1, VideoSet=${purviewObj.VideoSet}, OnlySelf=${purviewObj.OnlySelf}, UnPrinted=${purviewObj.UnPrinted}, FtpSet=0, ChangeDepartment=0, ExportRecord=${purviewObj.ExportRecord},
+      // ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, WorkstationControl=${purviewObj.WorkstationControl}, MobileControl=${purviewObj.MobileControl}, Role=3 where UserID=${UserID}`;
+      sqlStr = `update dbo.Purview set UserMan=${purviewObj.UserMan}, CanPsw=${purviewObj.CanPsw}, CanNew=${purviewObj.CanNew}, CanEdit=${purviewObj.CanEdit}, CanDelete=${purviewObj.CanDelete}, CanPrint=${purviewObj.CanPrint}, ReportStyle=${purviewObj.ReportStyle}, DictsMan=0, GlossaryMan=0,
+      TempletMan=0, HospitalInfo=${purviewObj.HospitalInfo}, CanBackup=${purviewObj.CanBackup}, ViewBackup=1, VideoSet=${purviewObj.VideoSet}, OnlySelf=${purviewObj.OnlySelf}, UnPrinted=${purviewObj.UnPrinted}, FtpSet=0, ChangeDepartment=0, ExportRecord=${purviewObj.ExportRecord},
+      ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, Role=3 where UserID=${UserID}`;
+    }
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve(true)
+    });
+  })
+}
+// 修改用户
+function __updateUserInfo(UserID, CanUSE, Des) {
+  return new Promise((resolve, reject) => {
+    var sqlStr = `update dbo.users set CanUSE=${CanUSE}, Des='${Des}' where UserID=${UserID};`
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve(true)
+    });
+  })
+}
+
+// 修改用户权限
+function __updatePurviewDetail(purviewObj, UserID, Role) {
+  return new Promise((resolve, reject) => {
+    var valueStr = ""
+    for (key in purviewObj) {
+      if (purviewObj[key] == null) {
+        continue
+      } else {
+        valueStr += `${key}=${purviewObj[key]},`
+      }
+    }
+    valueStr += `Role='${Role}'`;
+    var sqlStr = `update dbo.Purview set ${valueStr} where UserID=${UserID};`
+    db.sql(sqlStr, function (err, result) {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve(true)
+    });
+  })
+}
 module.exports = router;

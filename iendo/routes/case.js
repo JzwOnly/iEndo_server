@@ -57,6 +57,7 @@ router.get('/case/list', function (req, res, next) {
         console.log('时间是否合法', moment(param['datetime'], "YYYY-MM-DD").isValid())
         if (!moment(param['datetime'], "YYYY-MM-DD").isValid()) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
+            return;
         }
         nowDate = moment(param['datetime'], "YYYY-MM-DD");
         tomoDate = moment(param['datetime'], "YYYY-MM-DD").add(1, "days");
@@ -170,11 +171,13 @@ router.get('/case/search', function (req, res, next) {
             if (key == "CheckDateStart") {
                 if (!moment(caseSearchObj[key], "YYYY-MM-DD").isValid()) {
                     res.send(responseTool({}, repError, "CheckDateStart is not vaild"));
+                    return;
                 }
                 condiStr += `rb.CheckDate >= '${caseSearchObj[key]}' and `
             } else if (key == "CheckDateEnd") {
                 if (!moment(caseSearchObj[key], "YYYY-MM-DD").isValid()) {
                     res.send(responseTool({}, repError, "CheckDateEnd is not vaild"));
+                    return;
                 }
                 // 结束时间包括当天的，所以需要往后推一天
                 var tomoDate = moment(caseSearchObj[key], "YYYY-MM-DD")
@@ -321,6 +324,12 @@ router.post('/case/add', function (req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
+    let PatientAge = parseInt(params.PatientAge)
+    if (PatientAge > 255) {
+        res.send(responseTool({}, repError, "年龄必须小于255"))
+        return;
+    }
+
     var caseObj = {
         // RecordType: "endoscopy_check",
         PatientID: 0,
@@ -495,6 +504,11 @@ router.post('/case/update', function (req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
+    let PatientAge = parseInt(params.PatientAge)
+    if (PatientAge > 255) {
+        res.send(responseTool({}, repError, "年龄必须小于255"))
+        return;
+    }
     var caseObj = {
         PatientID: 0,
         Name: params.Name,
@@ -659,6 +673,7 @@ router.get('/case/caseInfo', function (req, res, next) {
             var caseInfo = yield __getCaseInfo(params["ID"]);
             if (caseInfo == null) {
                 res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
+                return;
             }
             // // 查询图片和视频数量
             let count = yield __getImagesAndVideosCount(params["ID"]);
@@ -868,13 +883,19 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
     try {
         fs.readFile(req.file.path, (err, data) => {
             // 校验是否上传成功
-            if (err) { return res.send(responseTool({}, repError, '上传失败')) }
+            if (err) { 
+                res.send(responseTool({}, repError, '上传失败')) 
+                return
+            }
             // 加载设备图片和视频静态文件
             var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
             let filename = 'DefaultLogo.jpg'
             let logofilePath = path.join(config.root.logoPath, filename)
             fs.writeFile(logofilePath, data, (err) => {
-                if (err) { return res.send(responseTool({}, repError, '写入失败')) };
+                if (err) {
+                    res.send(responseTool({}, repError, '写入失败'))
+                    return
+                };
                 res.send(responseTool({}, repSuccess, repSuccessMsg))
             })
         })
@@ -1039,6 +1060,7 @@ router.get('/report/reportExists', function(req, res, next) {
     co(function* () {
         try {
             // 查询是否已经生成病理报告
+            let info = yield __getReportUrlWith(params["ID"]);
             let url = yield __isExistsReport(params["ID"]);
             var data = {
                 "exists": false,
@@ -1047,7 +1069,7 @@ router.get('/report/reportExists', function(req, res, next) {
             if (url) {
                 data = {
                   "exists": true,
-                  "url": `${params["ID"]}/Report/${url}`
+                  "url": `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.jpg`
                 }
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
@@ -1084,6 +1106,19 @@ function __canOperation(action, UserID) {
         });
     })
 }
+// 20220528142130002
+// 大数相加
+function __sumStrings(a,b){
+    var res='', c=0;
+    a = a.split('');
+    b = b.split('');
+    while (a.length || b.length || c){
+        c += ~~a.pop() + ~~b.pop();
+        res = c % 10 + res;
+        c = c>9;
+    }
+    return res.replace(/^0+/,'');
+}
 // 新增时获取病例编号
 function __getNextCaseNo(caseNo) {
     if (caseNo == null) {
@@ -1103,7 +1138,8 @@ function __getNextCaseNo(caseNo) {
         } else {
             // 从最后一位到index-1位都是数字
             var pre = caseNo.substring(0, index)
-            var suf = Number(caseNo.substring(index, caseNo.length)) + 1
+            console.log(caseNo.substring(index, caseNo.length))
+            var suf = __sumStrings(caseNo.substring(index, caseNo.length), '1')
             return pre + suf.toString()
         }
     }
@@ -1141,7 +1177,6 @@ function __getListDicts(endoType) {
                 return
             }
             let records = result['recordset']
-            console.log(records)
             resolve(records)
         });
     })
@@ -1455,12 +1490,29 @@ function __isExistsReport(caseID) {
                 // 查询文件夹下所有文件
                 let filesArr = fs.readdirSync(caseReportDirPath)
                 if (filesArr.length > 0) {
+
                     resolve(filesArr[0])
                 } else {
                     resolve(null)
                 }
             }
         })
+    })
+}
+function __getReportUrlWith(CaseID) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from record_base where ID=${CaseID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            if (result['recordset'].length > 0) {
+                resolve(result['recordset'][0])
+            } else {
+                resolve(null)
+            }
+        });
     })
 }
 // 记录日志
