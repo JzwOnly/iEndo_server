@@ -406,6 +406,15 @@ router.post('/case/add', function (req, res, next) {
             }
             // 获取病历编号
             var caseNo = yield __getCaseNoReq(params.EndoType);
+            // 校验当前病例编号是否存在
+            var exist = yield __checkCaseNo(caseNo)
+            var num = 1
+            while(exist) {
+                var fcci = __fibonacci(num)
+                num++
+                caseNo = __getNextCaseNo(caseNo, fcci)
+                exist = yield __checkCaseNo(caseNo)
+            }
             caseObj["CaseNo"] = caseNo;
             // 新增 record_base
             const ID = yield __addCase(caseObj);
@@ -758,6 +767,13 @@ router.get('/case/casevideos', function (req, res, next) {
         try {
             // 查询视频
             let videos = yield __getVideos(params["ID"]);
+            // 计算每个视频的大小
+            var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+            for (var i=0; i<videos.length; i++) {
+                let videoPath = path.join(config.root.videosPath, path.join(params["ID"], videos[i]["FilePath"]))
+                videos[i]["sizeFormat"] = __formatBytes(yield __getFileSize(videoPath), 1);
+                videos[i]["size"] = yield __getFileSize(videoPath)
+            }
             var data = videos;
             res.send(responseTool(data, repSuccess, repSuccessMsg))
         } catch (error) {
@@ -1080,6 +1096,65 @@ router.get('/report/reportExists', function(req, res, next) {
 
 })
 
+// #region 查询直播流是否静音
+/**
+ * @api {get} /case/serverStatus 2.6 查询直播流是否静音
+ * @apiDescription 查询直播流是否静音
+ * @apiName serverStatus
+ * @apiGroup 病例（Case）
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {dict},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/serverStatus
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/serverStatus', function (req, res, next) {
+    co(function* () {
+        try {
+            var serverStatus = yield __getServerStatus()
+            res.send(responseTool(serverStatus, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+
+    })
+});
+
+// #region 查询病例模板
+/**
+ * @api {get} /case/caseTemplate 2.7 查询病例模板
+ * @apiDescription 查询病例模板
+ * @apiName caseTemplate
+ * @apiGroup 病例（Case）
+ * @apiParam {string} EndoType 工作站类型
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {dict},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/caseTemplate
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/caseTemplate', function (req, res, next) {
+    co(function* () {
+        try {
+            var params = req.query || req.params
+            var caseTemplate = yield __getCaseTemplate(params['EndoType'])
+            res.send(responseTool(caseTemplate, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+
+    })
+});
 
 // Private Function
 // 查询当前用户是否有操作权限
@@ -1092,6 +1167,7 @@ function __canOperation(action, UserID) {
                 return
             }
             let records = result['recordset']
+            
             if (records.length > 0) {
                 var purviewModel = records[0];
                 if (purviewModel.hasOwnProperty(action)) {
@@ -1120,10 +1196,10 @@ function __sumStrings(a,b){
     return res.replace(/^0+/,'');
 }
 // 新增时获取病例编号
-function __getNextCaseNo(caseNo) {
+function __getNextCaseNo(caseNo, num) {
     if (caseNo == null) {
         // 数据库中没有病例记录
-        return moment().format('YYYYMMDD') + '1';
+        return moment().format('YYYYMMDD') + '001';
     } else {
         var index = -1
         for (let i = caseNo.length - 1; i >= 0; i--) {
@@ -1134,12 +1210,19 @@ function __getNextCaseNo(caseNo) {
         }
         if (index == -1) {
             // 最后一位都不是数字
-            return caseNo + '1'
+            return caseNo + '001'
         } else {
             // 从最后一位到index-1位都是数字
             var pre = caseNo.substring(0, index)
             console.log(caseNo.substring(index, caseNo.length))
-            var suf = __sumStrings(caseNo.substring(index, caseNo.length), '1')
+            var addA = caseNo.substring(index, caseNo.length)
+            var addB = `${num}`
+            var maxLenght = Math.max(addA.length, addB.length)
+            var suf = __sumStrings(caseNo.substring(index, caseNo.length), `${num}`)
+            // 位数不够需要补零
+            if (suf.length < maxLenght ) {
+                suf = suf.padStart(maxLenght, "0")
+            }
             return pre + suf.toString()
         }
     }
@@ -1155,9 +1238,27 @@ function __getCaseNoReq(endo_type) {
             }
             let records = result['recordset']
             if (records.length > 0) {
-                resolve(__getNextCaseNo(records[0]['CaseNo']))
+                resolve(__getNextCaseNo(records[0]['CaseNo'], 1))
             } else {
                 resolve(null)
+            }
+        });
+    })
+}
+// 校验病例编号
+function __checkCaseNo(CaseNo) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from dbo.record_base where CaseNo = '${CaseNo}';`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            let records = result['recordset']
+            if (records.length > 0) {
+                resolve(true)
+            } else {
+                resolve(false)
             }
         });
     })
@@ -1181,6 +1282,27 @@ function __getListDicts(endoType) {
         });
     })
 }
+
+// 获取病例模板
+function __getCaseTemplate(endoType) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = ""
+        if (endoType == null || endoType === '') {
+            sqlStr = `select * from dbo.Template;`
+        } else {
+            sqlStr = `select * from dbo.Template where EndoType=${endoType};`
+        }
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            let records = result['recordset']
+            resolve(records)
+        });
+    })
+}
+
 // 新增病例基本信息
 function __addCase(caseObj) {
     return new Promise((resolve, reject) => {
@@ -1499,6 +1621,24 @@ function __isExistsReport(caseID) {
         })
     })
 }
+
+// 获取服务器信息
+function __getServerStatus() {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from server_status;`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            if (result['recordset'].length > 0) {
+                resolve(result['recordset'][0])
+            } else {
+                resolve(null)
+            }
+        });
+    })
+}
 function __getReportUrlWith(CaseID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `select * from record_base where ID=${CaseID};`
@@ -1549,6 +1689,14 @@ function __logRecord(logObj) {
     });
 
 }
+// 斐波那契数列
+function __fibonacci(n) {
+    let n1 = 1; n2 = 1;
+    for (let i = 2; i < n; i++) {
+        [n1, n2] = [n2, n1 + n2]
+    }
+    return n2
+}
 // 两个数组做差集
 function subArray(arr1, arr2) {
     var set1 = new Set(arr1);
@@ -1572,6 +1720,28 @@ function generateLogObj(UserID, UserName, Operation, Message, EndoType) {
         "EndoType": EndoType
     }
 }
-
-
+// 获取文件大小
+function __getFileSize(filePath) {
+    return new Promise((resolve) => {
+        if (!filePath) {
+            resolve(0);
+            return;
+        }
+        fs.stat(filePath, (err, data) => {
+            if (err == null) {
+                resolve(data.size);
+                return;
+            }
+            resolve(0);
+        });
+    });
+}
+function __formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + '' + sizes[i];
+}
 module.exports = router;

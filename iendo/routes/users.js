@@ -691,7 +691,6 @@ function getCurrentPasswordStatue(mUserID, mOldPassword) {
       }
     });
   });
-
 }
 
 //修改密码

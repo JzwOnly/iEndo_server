@@ -403,6 +403,13 @@ define({ "api": [
           },
           {
             "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "Des",
+            "description": "<p>被修改用户描述</p>"
+          },
+          {
+            "group": "Parameter",
             "type": "int",
             "optional": true,
             "field": "CanUSE",
@@ -1282,6 +1289,55 @@ define({ "api": [
   },
   {
     "type": "get",
+    "url": "/case/caseTemplate",
+    "title": "2.7 查询病例模板",
+    "description": "<p>查询病例模板</p>",
+    "name": "caseTemplate",
+    "group": "病例（Case）",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "EndoType",
+            "description": "<p>工作站类型</p>"
+          }
+        ]
+      }
+    },
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {dict},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/caseTemplate"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "get",
     "url": "/case/caseimages",
     "title": "1.9 病例图片",
     "description": "<p>病例图片</p>",
@@ -1995,6 +2051,42 @@ define({ "api": [
     "sampleRequest": [
       {
         "url": "http://localhost:3000/selectImages"
+      }
+    ],
+    "version": "1.0.0",
+    "filename": "routes/case.js",
+    "groupTitle": "病例（Case）"
+  },
+  {
+    "type": "get",
+    "url": "/case/serverStatus",
+    "title": "2.6 查询直播流是否静音",
+    "description": "<p>查询直播流是否静音</p>",
+    "name": "serverStatus",
+    "group": "病例（Case）",
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "json",
+            "optional": false,
+            "field": "result",
+            "description": ""
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Success-Response:",
+          "content": "{\n     \"code\": 0,\n     \"data\": {dict},\n     \"msg\": \"\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "sampleRequest": [
+      {
+        "url": "http://localhost:3000/case/serverStatus"
       }
     ],
     "version": "1.0.0",
