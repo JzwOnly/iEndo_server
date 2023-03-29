@@ -37,6 +37,7 @@ node_modules/
 */node_modules
 **/node_modules
 jspm_packages/
+*/package-lock.json
 
 # upload images
 */images/logo/
