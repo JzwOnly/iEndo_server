@@ -27,8 +27,8 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  *      "data": [{case},{case}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/list?datetime=2021-09-09
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/list?datetime=2021-09-09
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/list', function (req, res, next) {
@@ -121,8 +121,8 @@ router.get('/case/list', function (req, res, next) {
  *      "data": [{case},{case}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/search?CheckDateStart=2021-09-09&CheckDateEnd=2021-09-14
- * @apiVersion 1.0.0 
+ * @apiSampleRequest http://localhost:7001/case/search?CheckDateStart=2021-09-09&CheckDateEnd=2021-09-14
+ * @apiVersion 1.0.1 
 */
 // #endregion
 router.get('/case/search', function (req, res, next) {
@@ -231,8 +231,8 @@ router.get('/case/search', function (req, res, next) {
  *      "data": [{dic},{dic}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/listDicts
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/listDicts
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/listDicts', function (req, res, next) {
@@ -310,8 +310,8 @@ router.get('/case/listDicts', function (req, res, next) {
  *      "data": {"ID":ID},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/add
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/add
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.post('/case/add', function (req, res, next) {
@@ -501,8 +501,8 @@ router.post('/case/add', function (req, res, next) {
  *      "data": {},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/update
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/update
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.post('/case/update', function (req, res, next) {
@@ -616,8 +616,8 @@ router.post('/case/update', function (req, res, next) {
  *      "data": {},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/delete?ID=10
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/delete?ID=10
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.post('/case/delete', function (req, res, next) {
@@ -664,8 +664,8 @@ router.post('/case/delete', function (req, res, next) {
  *      "data": {case},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/caseInfo?ID=10
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/caseInfo?ID=10
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/caseInfo', function (req, res, next) {
@@ -712,8 +712,8 @@ router.get('/case/caseInfo', function (req, res, next) {
  *      "data": [{image}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/caseimages?ID=10
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/caseimages?ID=10
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/caseImages', function (req, res, next) {
@@ -751,8 +751,8 @@ router.get('/case/caseImages', function (req, res, next) {
  *      "data": [{video}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/casevideos?ID=10
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/casevideos?ID=10
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/casevideos', function (req, res, next) {
@@ -797,8 +797,8 @@ router.get('/case/casevideos', function (req, res, next) {
  *      "data": {dict},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/hospitalInfo
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/hospitalInfo
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/hospitalInfo', function (req, res, next) {
@@ -842,8 +842,8 @@ router.get('/case/hospitalInfo', function (req, res, next) {
  *      "data": [],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/updateHospitalInfo
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/updateHospitalInfo
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.post('/case/updateHospitalInfo', function (req, res, next) {
@@ -891,8 +891,8 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
  *      "data": {},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/uploadHospitalLogo
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/uploadHospitalLogo
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
@@ -945,8 +945,8 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
  *      "data": [{case},{case}],
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/report.aspx?Name=xxx&Sex=xx
- * @apiVersion 1.0.0 
+ * @apiSampleRequest http://localhost:7001/report.aspx?Name=xxx&Sex=xx
+ * @apiVersion 1.0.1 
 */
 // #endregion
 router.post('/report.aspx', function (req, res, next) {
@@ -1019,8 +1019,8 @@ router.post('/report.aspx', function (req, res, next) {
  *      "data": {},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/selectImages
- * @apiVersion 1.0.0 
+ * @apiSampleRequest http://localhost:7001/selectImages
+ * @apiVersion 1.0.1 
 */
 // #endregion
 router.post('/report/selectImages', function(req, res, next) {
@@ -1067,8 +1067,8 @@ router.post('/report/selectImages', function(req, res, next) {
  *      "data": {"exists": true, "url": "xxx.bmp"},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/reportExists
- * @apiVersion 1.0.0 
+ * @apiSampleRequest http://localhost:7001/reportExists
+ * @apiVersion 1.0.1 
 */
 // #endregion
 router.get('/report/reportExists', function(req, res, next) {
@@ -1118,8 +1118,8 @@ router.get('/report/reportExists', function(req, res, next) {
  *      "data": {dict},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/serverStatus
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/serverStatus
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/serverStatus', function (req, res, next) {
@@ -1134,10 +1134,10 @@ router.get('/case/serverStatus', function (req, res, next) {
     })
 });
 
-// #region 查询病例模板
+// #region 查询报告模板
 /**
- * @api {get} /case/caseTemplate 2.7 查询病例模板
- * @apiDescription 查询病例模板
+ * @api {get} /case/caseTemplate 2.7 查询报告模板
+ * @apiDescription 查询报告模板
  * @apiName caseTemplate
  * @apiGroup 病例（Case）
  * @apiParam {string} EndoType 工作站类型
@@ -1148,8 +1148,8 @@ router.get('/case/serverStatus', function (req, res, next) {
  *      "data": {dict},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/caseTemplate
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/caseTemplate
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/caseTemplate', function (req, res, next) {
@@ -1167,7 +1167,7 @@ router.get('/case/caseTemplate', function (req, res, next) {
 
 // #region 报告详细信息
 /**
- * @api {get} /case/reportInfo 2.8 病例详细信息
+ * @api {get} /case/reportInfo 2.8 报告详细信息
  * @apiDescription 报告详细信息
  * @apiName reportInfo
  * @apiGroup 病例（Case）
@@ -1180,8 +1180,8 @@ router.get('/case/caseTemplate', function (req, res, next) {
  *      "data": {reportInfo},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/reportInfo?ID=10
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/reportInfo?ID=10
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/reportInfo', function (req, res, next) {
@@ -1243,8 +1243,8 @@ router.get('/case/reportInfo', function (req, res, next) {
  *      "data": {reportTemplate},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/case/reportTemplate
- * @apiVersion 1.0.0
+ * @apiSampleRequest http://localhost:7001/case/reportTemplate
+ * @apiVersion 1.0.1
  */
 // #endregion
 router.get('/case/reportTemplate', function (req, res, next) {
@@ -1277,8 +1277,8 @@ router.get('/case/reportTemplate', function (req, res, next) {
  *      "data": {},
  *      "msg": ""
  * }
- * @apiSampleRequest http://localhost:3000/saveCaseTemplate
- * @apiVersion 1.0.0 
+ * @apiSampleRequest http://localhost:7001/saveCaseTemplate
+ * @apiVersion 1.0.1 
 */
 // #endregion
 router.post('/report/saveCaseTemplate', function(req, res, next) {
