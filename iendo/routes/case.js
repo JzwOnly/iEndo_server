@@ -914,9 +914,13 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
                 let logofilePath = path.join(config.root.logoPath, filename)
                 fs.writeFile(logofilePath, data, (err) => {
                     if (err) {
+                        // 删除临时文件
+                        fs.unlinkSync(req.file.path)
                         res.send(responseTool({}, repError, '写入失败'))
                         return
                     };
+                    // 删除临时文件
+                    fs.unlinkSync(req.file.path)
                     res.send(responseTool({}, repSuccess, repSuccessMsg))
                 })
             } catch (error) {
