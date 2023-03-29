@@ -1134,10 +1134,10 @@ router.get('/case/serverStatus', function (req, res, next) {
     })
 });
 
-// #region 查询报告模板
+// #region 查询病例模板
 /**
- * @api {get} /case/caseTemplate 2.7 查询报告模板
- * @apiDescription 查询报告模板
+ * @api {get} /case/caseTemplate 2.7 查询病例模板
+ * @apiDescription 查询病例模板
  * @apiName caseTemplate
  * @apiGroup 病例（Case）
  * @apiParam {string} EndoType 工作站类型
@@ -1230,10 +1230,10 @@ router.get('/case/reportInfo', function (req, res, next) {
     })
 });
 
-// #region 获取病历模版列表
+// #region 获取报告模版列表
 /**
- * @api {get} /case/reportTemplate 2.9 获取病历模版列表
- * @apiDescription 获取病历模版列表
+ * @api {get} /case/reportTemplate 2.9 获取报告模版列表
+ * @apiDescription 获取报告模版列表
  * @apiName reportTemplate
  * @apiGroup 病例（Case）
  * @apiSuccess {json} result
