@@ -8,7 +8,7 @@ var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
 const upload = multer({ dest: 'public/images/logo' })
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema } = require('../lib/schema');
+const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema, reportInfoSchema, reportTemplateSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -808,7 +808,7 @@ router.get('/case/hospitalInfo', function (req, res, next) {
             var hospitalInfos = yield __getHospitalInfo(params['EndoType'])
             var data = {
                 ...hospitalInfos,
-                'szIconPath': 'DefaultLogo.jpg',
+                'szIconPath': path.basename(hospitalInfos.szIconPath),
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
         } catch (error) {
@@ -883,6 +883,7 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
  * @apiName uploadHospitalLogo
  * @apiGroup 病例（Case）
  * @apiParam {File} logo 上传的图片
+ * @apiParam {string} [EndoType] 工作站类型
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -896,28 +897,33 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
 // #endregion
 router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
     console.log(req.file);
-    try {
-        fs.readFile(req.file.path, (err, data) => {
-            // 校验是否上传成功
-            if (err) { 
-                res.send(responseTool({}, repError, '上传失败')) 
-                return
-            }
-            // 加载设备图片和视频静态文件
-            var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
-            let filename = 'DefaultLogo.jpg'
-            let logofilePath = path.join(config.root.logoPath, filename)
-            fs.writeFile(logofilePath, data, (err) => {
-                if (err) {
-                    res.send(responseTool({}, repError, '写入失败'))
+    var params = req.body;
+    fs.readFile(req.file.path, (err, data) => {
+        co(function* () {
+            try {
+                // 校验是否上传成功
+                if (err) { 
+                    res.send(responseTool({}, repError, '上传失败')) 
                     return
-                };
-                res.send(responseTool({}, repSuccess, repSuccessMsg))
-            })
-        })
-    } catch (error) {
-        res.send(responseTool({}, repError, "上传失败"))
-    }
+                }
+                // 加载设备图片和视频静态文件
+                var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+                // 查询医院信息
+                var hospitalInfo = yield __getHospitalInfo(params['EndoType']);
+                let filename = path.basename(hospitalInfo.szIconPath);
+                let logofilePath = path.join(config.root.logoPath, filename)
+                fs.writeFile(logofilePath, data, (err) => {
+                    if (err) {
+                        res.send(responseTool({}, repError, '写入失败'))
+                        return
+                    };
+                    res.send(responseTool({}, repSuccess, repSuccessMsg))
+                })
+            } catch (error) {
+                res.send(responseTool({}, repError, "上传失败"))
+            }
+        });
+    });
 })
 
 
@@ -1083,9 +1089,12 @@ router.get('/report/reportExists', function(req, res, next) {
                 "url": ""
             };
             if (url) {
+				let bmpUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.bmp`
+				let jpgUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.jpg`
+				let exist = yield __isExitsFile(bmpUrl)
                 data = {
                   "exists": true,
-                  "url": `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.jpg`
+                  "url": exist ? bmpUrl : jpgUrl
                 }
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
@@ -1156,6 +1165,142 @@ router.get('/case/caseTemplate', function (req, res, next) {
     })
 });
 
+// #region 报告详细信息
+/**
+ * @api {get} /case/reportInfo 2.8 病例详细信息
+ * @apiDescription 报告详细信息
+ * @apiName reportInfo
+ * @apiGroup 病例（Case）
+ * @apiParam {int} ID 内部ID
+ * @apiParam {string} EndoType 工作站类型
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {reportInfo},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/reportInfo?ID=10
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/reportInfo', function (req, res, next) {
+    var params = req.query || req.params
+    const schemaResult = validateJson(reportInfoSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    co(function* () {
+        try {
+            // 查询病例信息
+            var caseInfo = yield __getCaseInfo(params["ID"]);
+            // 查询图片和视频数量
+            let count = yield __getImagesAndVideosCount(params["ID"]);
+            caseInfo = {
+                ...count,
+                ...caseInfo
+            }
+            // 查询医院信息
+            var hospitalInfo = yield __getHospitalInfo(params['EndoType']);
+            // 查询图片
+            let images = yield __getImages(params["ID"]);
+            var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+            let reportTemplateDirPath = path.join(config.root.reportTemplatePath, 'bin/Report.ini');
+            var exits = yield __getImageTemplateScaleINIExits(reportTemplateDirPath);
+            var imageTemplateScale = "";
+            if (exits) {
+                imageTemplateScale = __getImageTemplateScale(reportTemplateDirPath);
+            }
+            // logo截断一下只取文件名
+            var data = {
+                "caseInfo": caseInfo,
+                "hospitalInfo": {
+                    ...hospitalInfo,
+                    'szIconPath': path.basename(hospitalInfo.szIconPath)
+                },
+                "images": images,
+                "imageTemplateScale": imageTemplateScale,
+            }
+            res.send(responseTool(data, repSuccess, repSuccessMsg));
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+});
+
+// #region 获取病历模版列表
+/**
+ * @api {get} /case/reportTemplate 2.9 获取病历模版列表
+ * @apiDescription 获取病历模版列表
+ * @apiName reportTemplate
+ * @apiGroup 病例（Case）
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {reportTemplate},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/case/reportTemplate
+ * @apiVersion 1.0.0
+ */
+// #endregion
+router.get('/case/reportTemplate', function (req, res, next) {
+    var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+    let reportTemplateDirPath = path.join(config.root.reportTemplatePath, `Model/Report`)
+    co(function* () {
+        try {
+            // 查询所有报告模板文件
+            var templates = yield __filesDir(reportTemplateDirPath);
+            var data = templates;
+            res.send(responseTool(data, repSuccess, repSuccessMsg));
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+});
+
+// #region 保存报告模板
+/**
+ * @api {post} /report/saveCaseTemplate 3.0 保存报告模板
+ * @apiDescription 保存报告模板
+ * @apiName saveCaseTemplate
+ * @apiGroup 病例（Case）
+ * @apiParam {string} CaseID 病例IDT
+ * @apiParam {string} Template 模板名称
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:3000/saveCaseTemplate
+ * @apiVersion 1.0.0 
+*/
+// #endregion
+router.post('/report/saveCaseTemplate', function(req, res, next) {
+    var params = req.body
+    const schemaResult = validateJson(reportTemplateSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        // res.status(400).json(schemaResult.errors)
+        return;
+    }
+    let CaseID = params.CaseID;
+    var Template = params.Template;
+    co(function* () {
+        try {
+            // 更新 recode_base ReportStyle
+            yield __updateCaseInfoTemplate(CaseID, Template);
+            res.send(responseTool({}, repSuccess, repSuccessMsg));
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+})
 // Private Function
 // 查询当前用户是否有操作权限
 function __canOperation(action, UserID) {
@@ -1551,7 +1696,7 @@ function __updateCaseHospital(ID, caseHospitalObj) {
 // 更新病例报告图片选择images
 function __updateCaseInfoImages(caseID, images) {
     return new Promise((resolve, reject) => {
-        var sqlStr = `update dbo.record_base set images='${images}' where ID=${caseID};`
+        var sqlStr = `update dbo.record_base set Images='${images}' where ID=${caseID};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 reject(err)
@@ -1593,6 +1738,19 @@ function __updateImageSelect(oldImageIDs, newImageIDs) {
         });
     })
 }
+// 更新病例报告模板
+function __updateCaseInfoTemplate(caseID, template) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `update dbo.record_base set ReportStyle='${template}' where ID=${caseID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
 // 查询是否已经生成报告
 function __isExistsReport(caseID) {
     // 加载设备图片和视频静态文件
@@ -1621,7 +1779,72 @@ function __isExistsReport(caseID) {
         })
     })
 }
-
+// 查询报告是否存在
+function __isExitsFile(filePath) {
+	// 加载设备图片和视频静态文件
+	var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+    let caseReportDirPath = path.join(config.root.imagesPath, filePath)
+	return new Promise((resolve, reject) => {
+        fs.access(caseReportDirPath, function(err) {
+            if (err) {
+                if (err.code == "ENOENT") {
+                    resolve(false)
+                } else {
+                    reject(false);//"不存在"
+                }
+            } else {
+                resolve(true)
+            }
+        })
+    })
+}
+// 查询文件夹下所有文件
+function __filesDir(filePath) {
+    return new Promise((resolve, reject) => {
+        fs.access(filePath, function(err) {
+            if (err) {
+                if (err.code == "ENOENT") {
+                    resolve(null)
+                } else {
+                    reject(false);//"不存在"
+                }
+            } else {
+                // resolve(true);//"存在"
+                // 查询文件夹下所有文件
+                let filesArr = fs.readdirSync(filePath)
+                resolve(filesArr)
+            }
+        })
+    })
+}
+function __getImageTemplateScaleINIExits(filePath){
+    return new Promise((resolve, reject) => {
+        fs.access(filePath, function(err) {
+            if (err) {
+                if (err.code == "ENOENT") {
+                    resolve(false)
+                } else {
+                    reject(false);//"不存在"
+                }
+            } else {
+                resolve(true)
+            }
+        })
+    })
+}
+function __getImageTemplateScale(filePath){
+    if (!fs.existsSync(filePath)) {
+        return "";
+    }
+    var config = ini.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (!config) {
+        return "";
+    }
+    if (!config.Report.ImageScale) {
+        return "";
+    }
+    return config.Report.ImageScale;
+}
 // 获取服务器信息
 function __getServerStatus() {
     return new Promise((resolve, reject) => {

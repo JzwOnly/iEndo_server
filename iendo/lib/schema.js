@@ -92,6 +92,15 @@ const caseInfoSchema = {
     required: ["ID"],
     additionalProperties: false,
 }
+const reportInfoSchema = {
+    type: "object",
+    properties: {
+        ID: {type: ["integer", "string"]}, // 内部id
+        EndoType: {type: ["integer", "string"]}, // 工作站类型
+    },
+    required: ["ID", "EndoType"],
+    additionalProperties: false,
+}
 const caseReportSearchSchema = {
     type: "object",
     properties: {
@@ -101,7 +110,7 @@ const caseReportSearchSchema = {
         CardID: {type: "string", maxLength:20}, // 身份证号
         InsuranceID: {type: "string", maxLength:200}, // 社保卡ID
     },
-    require: ["Name"],
+    required: ["Name"],
     additionalProperties: false,
 }
 const caseSearchSchema = {
@@ -159,7 +168,17 @@ const selectImagesSchema = {
         oldImageIDs: {type: "string"}, // 修改前图片ID字符串
         newImageIDs: {type: "string"}, // 修改后图片ID字符串
     },
-    require: ["CaseID", "ImageIDs"],
+    required: ["CaseID", "oldImageIDs", "newImageIDs"],
+    additionalProperties: false,
+}
+
+const reportTemplateSchema = {
+    type: "object",
+    properties: {
+        CaseID: {type: ["integer", "string"]}, // 病例ID
+        Template: {type: "string"}, // 模板名
+    },
+    required: ["CaseID", "Template"],
     additionalProperties: false,
 }
 
@@ -193,7 +212,7 @@ const purviewSchema = {
         WorkstationControl: {type: ["integer", "string"]},    // 工作站是否对设备有控制权
         MobileControl: {type: ["integer", "string"]},         // 移动端是否对设备有控制权
     },
-    require: ["oUserID", "cUserID", "Role"],
+    required: ["oUserID", "cUserID", "Role"],
     additionalProperties: false,
 }
 const addUserSchema = {
@@ -227,7 +246,7 @@ const addUserSchema = {
         WorkstationControl: {type: ["integer", "string"]},    // 工作站是否对设备有控制权
         MobileControl: {type: ["integer", "string"]},         // 移动端是否对设备有控制权
     },
-    require: ["UserID", "Role", "UserName", "Password", "CanUSE"],
+    required: ["UserID", "Role", "UserName", "Password", "CanUSE"],
     additionalProperties: false,
 }
 module.exports = {
@@ -240,5 +259,7 @@ module.exports = {
     selectImagesSchema,
     caseInfoDeleteSchema,
     purviewSchema,
-    addUserSchema
+    addUserSchema,
+    reportInfoSchema,
+    reportTemplateSchema
 };

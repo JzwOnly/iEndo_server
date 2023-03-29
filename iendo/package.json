@@ -1,6 +1,6 @@
 {
   "name": "iendo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "start": "node ./bin/www"
@@ -23,6 +23,6 @@
   },
   "apidoc": {
     "title": "iEndo接口文档",
-    "url": "http://localhost:3000"
+    "url": "http://localhost:7001"
   }
 }
