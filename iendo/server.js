@@ -23,6 +23,7 @@ db.sql = function (sql, callBack) {
   var connection = new mssql.ConnectionPool(config, function (err) {
     if (err) {
       console.log('+++', err);
+      callBack(err, null);
       return;
     }
     var ps = new mssql.PreparedStatement(connection);

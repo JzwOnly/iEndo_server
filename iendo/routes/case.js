@@ -28,41 +28,42 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/list?datetime=2021-09-09
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/list', function (req, res, next) {
-    var param = req.query || req.params;
-    const caselistSchema = {
-        type: "object",
-        properties: {
-            datetime: { type: "string" }, // 日期
-            EndoType: { type: "string" }, // 工作站类型
-        },
-        required: ["EndoType"],
-        additionalProperties: false,
-    }
-    console.log(param)
-    const schemaResult = validateJson(caselistSchema, param)
-    if (!schemaResult.result) {
-        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
-        // res.status(400).json(schemaResult.errors)
-        return;
-    }
-    // 默认取当天时间
-    // var datetime = 
-    var nowDate = moment()
-    var tomoDate = moment().add(1, "days")
-    if (param.hasOwnProperty('datetime')) {
-        console.log('时间是否合法', moment(param['datetime'], "YYYY-MM-DD").isValid())
-        if (!moment(param['datetime'], "YYYY-MM-DD").isValid()) {
-            res.send(responseTool({}, repError, repParamsErrorMsg));
+    try {
+        var param = req.query || req.params;
+        const caselistSchema = {
+            type: "object",
+            properties: {
+                datetime: { type: "string" }, // 日期
+                EndoType: { type: "string" }, // 工作站类型
+            },
+            required: ["EndoType"],
+            additionalProperties: false,
+        }
+        console.log(param)
+        const schemaResult = validateJson(caselistSchema, param)
+        if (!schemaResult.result) {
+            res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+            // res.status(400).json(schemaResult.errors)
             return;
         }
-        nowDate = moment(param['datetime'], "YYYY-MM-DD");
-        tomoDate = moment(param['datetime'], "YYYY-MM-DD").add(1, "days");
-    }
-    var sqlStr = `select 
+        // 默认取当天时间
+        // var datetime = 
+        var nowDate = moment()
+        var tomoDate = moment().add(1, "days")
+        if (param.hasOwnProperty('datetime')) {
+            console.log('时间是否合法', moment(param['datetime'], "YYYY-MM-DD").isValid())
+            if (!moment(param['datetime'], "YYYY-MM-DD").isValid()) {
+                res.send(responseTool({}, repError, repParamsErrorMsg));
+                return;
+            }
+            nowDate = moment(param['datetime'], "YYYY-MM-DD");
+            tomoDate = moment(param['datetime'], "YYYY-MM-DD").add(1, "days");
+        }
+        var sqlStr = `select 
     convert(varchar(100), CheckDate, 120) check_date, 
     convert(varchar(100), RecordDate, 120) record_date, 
     convert(varchar(100), UpdateTime, 120) update_time, 
@@ -74,13 +75,16 @@ router.get('/case/list', function (req, res, next) {
     where 
     rb.RecordDate between '${nowDate.format("YYYY-MM-DD")}' and '${tomoDate.format("YYYY-MM-DD")}' 
     and rb.ID = rec.ID and EndoType=${param.EndoType};`
-    db.sql(sqlStr, function (err, result) {
-        if (err) {
-            res.send(responseTool({}, repError, repParamsErrorMsg));
-            return
-        }
-        res.send(responseTool(result['recordset'], repSuccess, repSuccessMsg, result['recordset'].length==0?{isEmpty: true}: {isEmpty: false}));
-    });
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                res.send(responseTool({}, repError, repParamsErrorMsg));
+                return
+            }
+            res.send(responseTool(result['recordset'], repSuccess, repSuccessMsg, result['recordset'].length == 0 ? { isEmpty: true } : { isEmpty: false }));
+        });
+    } catch (error) {
+        res.send(responseTool({}, repError, repParamsErrorMsg));
+    }
 });
 
 
@@ -122,7 +126,7 @@ router.get('/case/list', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/search?CheckDateStart=2021-09-09&CheckDateEnd=2021-09-14
- * @apiVersion 1.0.1 
+ * @apiVersion 1.0.2 
 */
 // #endregion
 router.get('/case/search', function (req, res, next) {
@@ -232,7 +236,7 @@ router.get('/case/search', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/listDicts
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/listDicts', function (req, res, next) {
@@ -311,7 +315,7 @@ router.get('/case/listDicts', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/add
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.post('/case/add', function (req, res, next) {
@@ -379,7 +383,7 @@ router.post('/case/add', function (req, res, next) {
         EndoType: params.EndoType,
     }
     // 判断工作站类型
-    const inEndo = [1,2,3,4,5,6,7,8,9,10,11]
+    const inEndo = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     const outEndo = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
     if (inEndo.indexOf(Number(params["EndoType"]))) {
         caseObj["RecordType"] = "endoscopy_check";
@@ -399,7 +403,7 @@ router.post('/case/add', function (req, res, next) {
     co(function* () {
         try {
             // 先判断是否有权限
-            var canOperation =  yield __canOperation("CanNew", params.UserID)
+            var canOperation = yield __canOperation("CanNew", params.UserID)
             if (!canOperation) {
                 res.send(responseTool({}, repError, "当前账号无操作权限"))
                 return;
@@ -409,7 +413,7 @@ router.post('/case/add', function (req, res, next) {
             // 校验当前病例编号是否存在
             var exist = yield __checkCaseNo(caseNo)
             var num = 1
-            while(exist) {
+            while (exist) {
                 var fcci = __fibonacci(num)
                 num++
                 caseNo = __getNextCaseNo(caseNo, fcci)
@@ -426,7 +430,7 @@ router.post('/case/add', function (req, res, next) {
                 // 插入记录
                 yield __logRecord(generateLogObj(params.UserID, params.UserName, "新增病例", `病例ID: ${ID}`, params.EndoType))
                 if (result) {
-                    res.send(responseTool({"ID": ID}, repSuccess, repSuccessMsg))
+                    res.send(responseTool({ "ID": ID }, repSuccess, repSuccessMsg))
                 } else {
                     res.send(responseTool({}, repError, repParamsErrorMsg))
                 }
@@ -502,7 +506,7 @@ router.post('/case/add', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/update
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.post('/case/update', function (req, res, next) {
@@ -578,7 +582,7 @@ router.post('/case/update', function (req, res, next) {
     co(function* () {
         try {
             // 先判断是否有权限
-            var canOperation =  yield __canOperation("CanEdit", params.UserID)
+            var canOperation = yield __canOperation("CanEdit", params.UserID)
             if (!canOperation) {
                 res.send(responseTool({}, repError, "当前账号无操作权限"))
                 return;
@@ -617,7 +621,7 @@ router.post('/case/update', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/delete?ID=10
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.post('/case/delete', function (req, res, next) {
@@ -631,7 +635,7 @@ router.post('/case/delete', function (req, res, next) {
     co(function* () {
         try {
             // 先判断是否有权限
-            var canOperation =  yield __canOperation("CanDelete", params.UserID)
+            var canOperation = yield __canOperation("CanDelete", params.UserID)
             if (!canOperation) {
                 res.send(responseTool({}, repError, "当前账号无操作权限"))
                 return;
@@ -665,7 +669,7 @@ router.post('/case/delete', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseInfo?ID=10
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/caseInfo', function (req, res, next) {
@@ -713,7 +717,7 @@ router.get('/case/caseInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseimages?ID=10
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/caseImages', function (req, res, next) {
@@ -752,7 +756,7 @@ router.get('/case/caseImages', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/casevideos?ID=10
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/casevideos', function (req, res, next) {
@@ -769,7 +773,7 @@ router.get('/case/casevideos', function (req, res, next) {
             let videos = yield __getVideos(params["ID"]);
             // 计算每个视频的大小
             var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
-            for (var i=0; i<videos.length; i++) {
+            for (var i = 0; i < videos.length; i++) {
                 let videoPath = path.join(config.root.videosPath, path.join(params["ID"], videos[i]["FilePath"]))
                 videos[i]["sizeFormat"] = __formatBytes(yield __getFileSize(videoPath), 1);
                 videos[i]["size"] = yield __getFileSize(videoPath)
@@ -798,13 +802,13 @@ router.get('/case/casevideos', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/hospitalInfo
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/hospitalInfo', function (req, res, next) {
     co(function* () {
         try {
-            var params = req.query || req.params 
+            var params = req.query || req.params
             var hospitalInfos = yield __getHospitalInfo(params['EndoType'])
             var data = {
                 ...hospitalInfos,
@@ -843,7 +847,7 @@ router.get('/case/hospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/updateHospitalInfo
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.post('/case/updateHospitalInfo', function (req, res, next) {
@@ -892,7 +896,7 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/uploadHospitalLogo
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
@@ -902,8 +906,8 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
         co(function* () {
             try {
                 // 校验是否上传成功
-                if (err) { 
-                    res.send(responseTool({}, repError, '上传失败')) 
+                if (err) {
+                    res.send(responseTool({}, repError, '上传失败'))
                     return
                 }
                 // 加载设备图片和视频静态文件
@@ -950,7 +954,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/report.aspx?Name=xxx&Sex=xx
- * @apiVersion 1.0.1 
+ * @apiVersion 1.0.2 
 */
 // #endregion
 router.post('/report.aspx', function (req, res, next) {
@@ -961,7 +965,7 @@ router.post('/report.aspx', function (req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
-    if (params.OutpatientID==null && params.CardID==null && params.InsuranceID==null) {
+    if (params.OutpatientID == null && params.CardID == null && params.InsuranceID == null) {
         res.send("-1")
         return;
     }
@@ -999,7 +1003,7 @@ router.post('/report.aspx', function (req, res, next) {
                 row.RecordDate = moment(row.RecordDate).utc().format("YYYY-MM-DD HH:mm:ss")
                 return row;
             });
-            res.send({"ds":data})
+            res.send({ "ds": data })
         } else {
             res.send("-1")
         }
@@ -1024,10 +1028,10 @@ router.post('/report.aspx', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/selectImages
- * @apiVersion 1.0.1 
+ * @apiVersion 1.0.2 
 */
 // #endregion
-router.post('/report/selectImages', function(req, res, next) {
+router.post('/report/selectImages', function (req, res, next) {
     var params = req.body
     const schemaResult = validateJson(selectImagesSchema, params)
     if (!schemaResult.result) {
@@ -1072,10 +1076,10 @@ router.post('/report/selectImages', function(req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/reportExists
- * @apiVersion 1.0.1 
+ * @apiVersion 1.0.2 
 */
 // #endregion
-router.get('/report/reportExists', function(req, res, next) {
+router.get('/report/reportExists', function (req, res, next) {
     var params = req.query || req.params
     const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
@@ -1093,12 +1097,12 @@ router.get('/report/reportExists', function(req, res, next) {
                 "url": ""
             };
             if (url) {
-				let bmpUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.bmp`
-				let jpgUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.jpg`
-				let exist = yield __isExitsFile(bmpUrl)
+                let bmpUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.bmp`
+                let jpgUrl = `${params["ID"]}/Report/${info["Name"]}${info["CaseNo"]}.jpg`
+                let exist = yield __isExitsFile(bmpUrl)
                 data = {
-                  "exists": true,
-                  "url": exist ? bmpUrl : jpgUrl
+                    "exists": true,
+                    "url": exist ? bmpUrl : jpgUrl
                 }
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
@@ -1123,7 +1127,7 @@ router.get('/report/reportExists', function(req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/serverStatus
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/serverStatus', function (req, res, next) {
@@ -1153,7 +1157,7 @@ router.get('/case/serverStatus', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseTemplate
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/caseTemplate', function (req, res, next) {
@@ -1185,7 +1189,7 @@ router.get('/case/caseTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportInfo?ID=10
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/reportInfo', function (req, res, next) {
@@ -1248,7 +1252,7 @@ router.get('/case/reportInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportTemplate
- * @apiVersion 1.0.1
+ * @apiVersion 1.0.2
  */
 // #endregion
 router.get('/case/reportTemplate', function (req, res, next) {
@@ -1282,10 +1286,10 @@ router.get('/case/reportTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/saveCaseTemplate
- * @apiVersion 1.0.1 
+ * @apiVersion 1.0.2 
 */
 // #endregion
-router.post('/report/saveCaseTemplate', function(req, res, next) {
+router.post('/report/saveCaseTemplate', function (req, res, next) {
     var params = req.body
     const schemaResult = validateJson(reportTemplateSchema, params)
     if (!schemaResult.result) {
@@ -1305,6 +1309,39 @@ router.post('/report/saveCaseTemplate', function(req, res, next) {
         }
     })
 })
+
+// #region 获取报告示意图列表
+/**
+ * @api {get} /case/reportSketchImage 3.1 获取报告示意图列表
+ * @apiDescription 获取报告模版列表
+ * @apiName reportSketchImage
+ * @apiGroup 病例（Case）
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {reportTemplate},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:7001/case/reportSketchImage
+ * @apiVersion 1.0.2
+ */
+// #endregion
+router.get('/case/reportSketchImage', function (req, res, next) {
+    var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+    let reportSketchImageDirPath = config.root.sketchPath;
+    co(function* () {
+        try {
+            // 查询所有报告模板文件
+            var sketchImags = yield __filesDir(reportSketchImageDirPath);
+            var data = sketchImags;
+            res.send(responseTool(data, repSuccess, repSuccessMsg));
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+});
+
 // Private Function
 // 查询当前用户是否有操作权限
 function __canOperation(action, UserID) {
@@ -1316,7 +1353,7 @@ function __canOperation(action, UserID) {
                 return
             }
             let records = result['recordset']
-            
+
             if (records.length > 0) {
                 var purviewModel = records[0];
                 if (purviewModel.hasOwnProperty(action)) {
@@ -1324,7 +1361,7 @@ function __canOperation(action, UserID) {
                 } else {
                     resolve(false)
                 }
-                
+
             } else {
                 resolve(false)
             }
@@ -1333,16 +1370,16 @@ function __canOperation(action, UserID) {
 }
 // 20220528142130002
 // 大数相加
-function __sumStrings(a,b){
-    var res='', c=0;
+function __sumStrings(a, b) {
+    var res = '', c = 0;
     a = a.split('');
     b = b.split('');
-    while (a.length || b.length || c){
+    while (a.length || b.length || c) {
         c += ~~a.pop() + ~~b.pop();
         res = c % 10 + res;
-        c = c>9;
+        c = c > 9;
     }
-    return res.replace(/^0+/,'');
+    return res.replace(/^0+/, '');
 }
 // 新增时获取病例编号
 function __getNextCaseNo(caseNo, num) {
@@ -1369,7 +1406,7 @@ function __getNextCaseNo(caseNo, num) {
             var maxLenght = Math.max(addA.length, addB.length)
             var suf = __sumStrings(caseNo.substring(index, caseNo.length), `${num}`)
             // 位数不够需要补零
-            if (suf.length < maxLenght ) {
+            if (suf.length < maxLenght) {
                 suf = suf.padStart(maxLenght, "0")
             }
             return pre + suf.toString()
@@ -1762,7 +1799,7 @@ function __isExistsReport(caseID) {
     let caseReportDirPath = path.join(config.root.imagesPath, `${caseID}/Report`)
     console.log(caseReportDirPath)
     return new Promise((resolve, reject) => {
-        fs.access(caseReportDirPath, function(err) {
+        fs.access(caseReportDirPath, function (err) {
             if (err) {
                 if (err.code == "ENOENT") {
                     resolve(null)
@@ -1785,11 +1822,11 @@ function __isExistsReport(caseID) {
 }
 // 查询报告是否存在
 function __isExitsFile(filePath) {
-	// 加载设备图片和视频静态文件
-	var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
+    // 加载设备图片和视频静态文件
+    var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
     let caseReportDirPath = path.join(config.root.imagesPath, filePath)
-	return new Promise((resolve, reject) => {
-        fs.access(caseReportDirPath, function(err) {
+    return new Promise((resolve, reject) => {
+        fs.access(caseReportDirPath, function (err) {
             if (err) {
                 if (err.code == "ENOENT") {
                     resolve(false)
@@ -1805,7 +1842,7 @@ function __isExitsFile(filePath) {
 // 查询文件夹下所有文件
 function __filesDir(filePath) {
     return new Promise((resolve, reject) => {
-        fs.access(filePath, function(err) {
+        fs.access(filePath, function (err) {
             if (err) {
                 if (err.code == "ENOENT") {
                     resolve(null)
@@ -1821,9 +1858,9 @@ function __filesDir(filePath) {
         })
     })
 }
-function __getImageTemplateScaleINIExits(filePath){
+function __getImageTemplateScaleINIExits(filePath) {
     return new Promise((resolve, reject) => {
-        fs.access(filePath, function(err) {
+        fs.access(filePath, function (err) {
             if (err) {
                 if (err.code == "ENOENT") {
                     resolve(false)
@@ -1836,7 +1873,7 @@ function __getImageTemplateScaleINIExits(filePath){
         })
     })
 }
-function __getImageTemplateScale(filePath){
+function __getImageTemplateScale(filePath) {
     if (!fs.existsSync(filePath)) {
         return "";
     }
