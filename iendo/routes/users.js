@@ -801,38 +801,38 @@ function __getUserID(username, password) {
 function __addPurview(purviewObj, UserID, role) {
   return new Promise((resolve, reject) => {
     var sqlStr = ""
-    if (parseInt(role) == 0) {
-      // 管理员
+    if (parseInt(role) == 1) {
+      // 管理员 role = 1
       // sqlStr = `update dbo.Purview set UserMan=1, CanPsw=1, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
       // TempletMan=1, HospitalInfo=1, CanBackup=1, ViewBackup=1, VideoSet=1, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=1, ExportRecord=1,
-      // ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, WorkstationControl=1, MobileControl=1, Role=0 where UserID=${UserID}`;
+      // ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, WorkstationControl=1, MobileControl=1, Role=1 where UserID=${UserID}`;
       sqlStr = `update dbo.Purview set UserMan=1, CanPsw=1, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
       TempletMan=1, HospitalInfo=1, CanBackup=1, ViewBackup=1, VideoSet=1, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=1, ExportRecord=1,
-      ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, Role=0 where UserID=${UserID}`;
-    } else if (parseInt(role) == 1) {
-      // 操作员
+      ExportImage=1, ExportVideo=1, DeviceSet=1, SeatAdjust=1, SnapVideoRecord=1, LiveStream=1, Role=1 where UserID=${UserID}`;
+    } else if (parseInt(role) == 2) {
+      // 操作员 role = 2
       // sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
       // TempletMan=1, HospitalInfo=0, CanBackup=1, ViewBackup=1, VideoSet=0, OnlySelf=1, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
-      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=1 where UserID=${UserID}`;
+      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=2 where UserID=${UserID}`;
       sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=1, CanEdit=1, CanDelete=1, CanPrint=1, ReportStyle=1, DictsMan=1, GlossaryMan=1,
       TempletMan=1, HospitalInfo=0, CanBackup=1, ViewBackup=1, VideoSet=0, OnlySelf=1, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
-      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=1 where UserID=${UserID}`;
-    } else if (parseInt(role) == 2) {
-      // 普通用户
+      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=2 where UserID=${UserID}`;
+    } else if (parseInt(role) == 3) {
+      // 普通用户 role = 3
       // sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=0, CanEdit=0, CanDelete=0, CanPrint=1, ReportStyle=0, DictsMan=0, GlossaryMan=0,
       // TempletMan=0, HospitalInfo=0, CanBackup=0, ViewBackup=1, VideoSet=0, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
-      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=2 where UserID=${UserID}`;
+      // ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, WorkstationControl=0, MobileControl=0, Role=3 where UserID=${UserID}`;
       sqlStr = `update dbo.Purview set UserMan=0, CanPsw=0, CanNew=0, CanEdit=0, CanDelete=0, CanPrint=1, ReportStyle=0, DictsMan=0, GlossaryMan=0,
       TempletMan=0, HospitalInfo=0, CanBackup=0, ViewBackup=1, VideoSet=0, OnlySelf=0, UnPrinted=0, FtpSet=0, ChangeDepartment=0, ExportRecord=0,
-      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=2 where UserID=${UserID}`;
+      ExportImage=0, ExportVideo=0, DeviceSet=0, SeatAdjust=0, SnapVideoRecord=0, LiveStream=0, Role=3 where UserID=${UserID}`;
     } else {
-      // 自定义用户
+      // 自定义用户 role = 0
       // sqlStr = `update dbo.Purview set UserMan=${purviewObj.UserMan}, CanPsw=${purviewObj.CanPsw}, CanNew=${purviewObj.CanNew}, CanEdit=${purviewObj.CanEdit}, CanDelete=${purviewObj.CanDelete}, CanPrint=${purviewObj.CanPrint}, ReportStyle=${purviewObj.ReportStyle}, DictsMan=0, GlossaryMan=0,
       // TempletMan=0, HospitalInfo=${purviewObj.HospitalInfo}, CanBackup=${purviewObj.CanBackup}, ViewBackup=1, VideoSet=${purviewObj.VideoSet}, OnlySelf=${purviewObj.OnlySelf}, UnPrinted=${purviewObj.UnPrinted}, FtpSet=0, ChangeDepartment=0, ExportRecord=${purviewObj.ExportRecord},
-      // ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, WorkstationControl=${purviewObj.WorkstationControl}, MobileControl=${purviewObj.MobileControl}, Role=3 where UserID=${UserID}`;
+      // ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, WorkstationControl=${purviewObj.WorkstationControl}, MobileControl=${purviewObj.MobileControl}, Role=0 where UserID=${UserID}`;
       sqlStr = `update dbo.Purview set UserMan=${purviewObj.UserMan}, CanPsw=${purviewObj.CanPsw}, CanNew=${purviewObj.CanNew}, CanEdit=${purviewObj.CanEdit}, CanDelete=${purviewObj.CanDelete}, CanPrint=${purviewObj.CanPrint}, ReportStyle=${purviewObj.ReportStyle}, DictsMan=0, GlossaryMan=0,
       TempletMan=0, HospitalInfo=${purviewObj.HospitalInfo}, CanBackup=${purviewObj.CanBackup}, ViewBackup=1, VideoSet=${purviewObj.VideoSet}, OnlySelf=${purviewObj.OnlySelf}, UnPrinted=${purviewObj.UnPrinted}, FtpSet=0, ChangeDepartment=0, ExportRecord=${purviewObj.ExportRecord},
-      ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, Role=3 where UserID=${UserID}`;
+      ExportImage=${purviewObj.ExportImage}, ExportVideo=${purviewObj.ExportVideo}, DeviceSet=${purviewObj.DeviceSet}, SeatAdjust=${purviewObj.SeatAdjust}, SnapVideoRecord=${purviewObj.SnapVideoRecord}, LiveStream=${purviewObj.LiveStream}, Role=0 where UserID=${UserID}`;
     }
     db.sql(sqlStr, function (err, result) {
       if (err) {

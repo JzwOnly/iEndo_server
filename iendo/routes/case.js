@@ -419,6 +419,11 @@ router.post('/case/add', function (req, res, next) {
                 caseNo = __getNextCaseNo(caseNo, fcci)
                 exist = yield __checkCaseNo(caseNo)
             }
+            var responseMsg = repSuccessMsg;
+            if (caseNo.length > 12) {
+                caseNo = moment().format('YYYY') + '001';
+                responseMsg = "检查号已超限，将重新生成新的检查号";
+            }
             caseObj["CaseNo"] = caseNo;
             // 新增 record_base
             const ID = yield __addCase(caseObj);
@@ -430,7 +435,7 @@ router.post('/case/add', function (req, res, next) {
                 // 插入记录
                 yield __logRecord(generateLogObj(params.UserID, params.UserName, "新增病例", `病例ID: ${ID}`, params.EndoType))
                 if (result) {
-                    res.send(responseTool({ "ID": ID }, repSuccess, repSuccessMsg))
+                    res.send(responseTool(responseMsg?{ "ID": ID, "msg":responseMsg}: {"ID": ID}, repSuccess, repSuccessMsg))
                 } else {
                     res.send(responseTool({}, repError, repParamsErrorMsg))
                 }
@@ -570,9 +575,14 @@ router.post('/case/update', function (req, res, next) {
         EndoType: params.EndoType,
     }
     // 判断工作站类型
-    if (Number(params["EndoType"]) == 3) {
+    const inEndo = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    const outEndo = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
+    if (inEndo.indexOf(Number(params["EndoType"]))) {
         caseObj["RecordType"] = "endoscopy_check";
+    } else if (outEndo.indexOf(Number(params["EndoType"]))) {
+        caseObj["RecordType"] = "endoscopy_surgery";
     }
+
     var caseCheckObj = {
         ExaminingPhysician: params.ExaminingPhysician,
         ClinicalDiagnosis: params.ClinicalDiagnosis,
@@ -587,6 +597,12 @@ router.post('/case/update', function (req, res, next) {
                 res.send(responseTool({}, repError, "当前账号无操作权限"))
                 return;
             }
+            var responseMsg = null;
+            if (caseObj["CaseNo"].length > 12) {
+                caseObj["CaseNo"] = moment().format('YYYY') + '001';
+                responseMsg = "检查号已超限，将重新生成新的检查号";
+            }
+            
             // 更新 record_base
             yield __updateCase(params["ID"], caseObj);
             if (params.ExaminingPhysician != null || params.ClinicalDiagnosis != null || params.CheckContent != null || params.CheckDiagnosis != null) {
@@ -595,7 +611,7 @@ router.post('/case/update', function (req, res, next) {
             }
             // 插入记录
             yield __logRecord(generateLogObj(params.UserID, params.UserName, "修改病例", `病例ID: ${params["ID"]}`, params.EndoType))
-            res.send(responseTool({}, repSuccess, repSuccessMsg))
+            res.send(responseTool(responseMsg?{"msg":responseMsg}:{}, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
@@ -1385,7 +1401,7 @@ function __sumStrings(a, b) {
 function __getNextCaseNo(caseNo, num) {
     if (caseNo == null) {
         // 数据库中没有病例记录
-        return moment().format('YYYYMMDD') + '001';
+        return moment().format('YYYY') + '001';
     } else {
         var index = -1
         for (let i = caseNo.length - 1; i >= 0; i--) {
