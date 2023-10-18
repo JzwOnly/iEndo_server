@@ -8,7 +8,7 @@ var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
 const upload = multer({ dest: 'public/images/logo' })
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema, reportInfoSchema, reportTemplateSchema } = require('../lib/schema');
+const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema, reportInfoSchema, reportTemplateSchema, caseDefaultValueSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -28,7 +28,7 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/list?datetime=2021-09-09
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/list', function (req, res, next) {
@@ -126,7 +126,7 @@ router.get('/case/list', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/search?CheckDateStart=2021-09-09&CheckDateEnd=2021-09-14
- * @apiVersion 1.0.2 
+ * @apiVersion 1.0.3 
 */
 // #endregion
 router.get('/case/search', function (req, res, next) {
@@ -223,7 +223,7 @@ router.get('/case/search', function (req, res, next) {
 
 // #region 病例数据字典
 /**
- * @api {get} /case/listDicts 1.4 病例数据字典
+ * @api {get} /case/listDicts 1.3 病例数据字典
  * @apiDescription 病例数据字典
  * @apiName listDicts
  * @apiGroup 病例（Case）
@@ -236,7 +236,7 @@ router.get('/case/search', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/listDicts
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/listDicts', function (req, res, next) {
@@ -255,7 +255,7 @@ router.get('/case/listDicts', function (req, res, next) {
 
 // #region 新增病例
 /**
- * @api {post} /case/add 1.5 新增病例
+ * @api {post} /case/add 1.4 新增病例
  * @apiDescription 新增病例
  * @apiName add
  * @apiGroup 病例（Case）
@@ -315,7 +315,7 @@ router.get('/case/listDicts', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/add
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.post('/case/add', function (req, res, next) {
@@ -449,7 +449,7 @@ router.post('/case/add', function (req, res, next) {
 
 // #region 修改病例
 /**
- * @api {post} /case/update 1.6 修改病例
+ * @api {post} /case/update 1.5 修改病例
  * @apiDescription 修改病例
  * @apiName update
  * @apiGroup 病例（Case）
@@ -511,7 +511,7 @@ router.post('/case/add', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/update
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.post('/case/update', function (req, res, next) {
@@ -621,7 +621,7 @@ router.post('/case/update', function (req, res, next) {
 
 // #region 删除病例
 /**
- * @api {post} /case/delete 1.7 删除病例
+ * @api {post} /case/delete 1.6 删除病例
  * @apiDescription 删除病例
  * @apiName delete
  * @apiGroup 病例（Case）
@@ -637,7 +637,7 @@ router.post('/case/update', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/delete?ID=10
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.post('/case/delete', function (req, res, next) {
@@ -672,7 +672,7 @@ router.post('/case/delete', function (req, res, next) {
 
 // #region 病例详细信息
 /**
- * @api {get} /case/caseInfo 1.8 病例详细信息
+ * @api {get} /case/caseInfo 1.7 病例详细信息
  * @apiDescription 病例详细信息
  * @apiName caseInfo
  * @apiGroup 病例（Case）
@@ -685,7 +685,7 @@ router.post('/case/delete', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseInfo?ID=10
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/caseInfo', function (req, res, next) {
@@ -720,7 +720,7 @@ router.get('/case/caseInfo', function (req, res, next) {
 
 // #region 病例图片
 /**
- * @api {get} /case/caseimages 1.9 病例图片
+ * @api {get} /case/caseimages 1.8 病例图片
  * @apiDescription 病例图片
  * @apiName caseimages
  * @apiGroup 病例（Case）
@@ -733,7 +733,7 @@ router.get('/case/caseInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseimages?ID=10
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/caseImages', function (req, res, next) {
@@ -772,7 +772,7 @@ router.get('/case/caseImages', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/casevideos?ID=10
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/casevideos', function (req, res, next) {
@@ -818,7 +818,7 @@ router.get('/case/casevideos', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/hospitalInfo
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/hospitalInfo', function (req, res, next) {
@@ -863,7 +863,7 @@ router.get('/case/hospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/updateHospitalInfo
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.post('/case/updateHospitalInfo', function (req, res, next) {
@@ -912,7 +912,7 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/uploadHospitalLogo
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
@@ -970,7 +970,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/report.aspx?Name=xxx&Sex=xx
- * @apiVersion 1.0.2 
+ * @apiVersion 1.0.3 
 */
 // #endregion
 router.post('/report.aspx', function (req, res, next) {
@@ -1044,7 +1044,7 @@ router.post('/report.aspx', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/selectImages
- * @apiVersion 1.0.2 
+ * @apiVersion 1.0.3 
 */
 // #endregion
 router.post('/report/selectImages', function (req, res, next) {
@@ -1092,7 +1092,7 @@ router.post('/report/selectImages', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/reportExists
- * @apiVersion 1.0.2 
+ * @apiVersion 1.0.3 
 */
 // #endregion
 router.get('/report/reportExists', function (req, res, next) {
@@ -1143,7 +1143,7 @@ router.get('/report/reportExists', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/serverStatus
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/serverStatus', function (req, res, next) {
@@ -1173,7 +1173,7 @@ router.get('/case/serverStatus', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseTemplate
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/caseTemplate', function (req, res, next) {
@@ -1205,7 +1205,7 @@ router.get('/case/caseTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportInfo?ID=10
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/reportInfo', function (req, res, next) {
@@ -1268,7 +1268,7 @@ router.get('/case/reportInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportTemplate
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/reportTemplate', function (req, res, next) {
@@ -1302,7 +1302,7 @@ router.get('/case/reportTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/saveCaseTemplate
- * @apiVersion 1.0.2 
+ * @apiVersion 1.0.3 
 */
 // #endregion
 router.post('/report/saveCaseTemplate', function (req, res, next) {
@@ -1340,7 +1340,7 @@ router.post('/report/saveCaseTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportSketchImage
- * @apiVersion 1.0.2
+ * @apiVersion 1.0.3
  */
 // #endregion
 router.get('/case/reportSketchImage', function (req, res, next) {
@@ -1354,6 +1354,140 @@ router.get('/case/reportSketchImage', function (req, res, next) {
             res.send(responseTool(data, repSuccess, repSuccessMsg));
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
+        }
+    })
+});
+
+// #region 查询病例默认值
+/**
+ * @api {get} /case/queryCaseDefaultValue 3.2 查询病例默认值
+ * @apiDescription 查询病例默认值
+ * @apiName queryCaseDefaultValue
+ * @apiGroup 病例（Case）
+ * @apiParam {string} EndoType 工作站类型
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [{case}],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:7001/case/queryCaseDefaultValue
+ * @apiVersion 1.0.3
+ */
+// #endregion
+router.get('/case/queryCaseDefaultValue', function (req, res, next) {
+    co(function* () {
+        try {
+            var params = req.query || req.params
+            var defaultVal = yield __getCaseDefaultVal(params['EndoType'])
+            res.send(responseTool(defaultVal, repSuccess, repSuccessMsg))
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+});
+
+// #region 设置病例默认值
+/**
+ * @api {post} /case/updateCaseDefaultValue 3.3 设置病例默认值
+ * @apiDescription 设置病例默认值
+ * @apiName updateCaseDefaultValue
+ * @apiGroup 病例（Case）
+ * @apiParam {string} EndoType 工作站类型
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": {},
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:7001/case/updateCaseDefaultValue
+ * @apiVersion 1.0.3
+ */
+// #endregion
+router.post('/case/updateCaseDefaultValue', function (req, res, next) {
+    var params = req.body;
+    const schemaResult = validateJson(caseDefaultValueSchema, params)
+    if (!schemaResult.result) {
+        res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
+        return;
+    }
+    var defaultValObj = {
+        Married: params.Married,
+        Sex: params.Sex,
+        Tel: params.Tel,
+        Address: params.Address,
+        PatientNo: params.PatientNo,
+        CardID: params.CardID,
+        MedHistory: params.MedHistory,
+        FamilyHistory: params.FamilyHistory,
+        Race: params.Race,
+        Occupatior: params.Occupatior,
+        InsuranceID: params.InsuranceID,
+        NativePlace: params.NativePlace,
+        PatientAge: params.PatientAge,
+        AgeUnit: params.AgeUnit,
+        CaseNo: params.CaseNo,
+        ReturnVisit: params.ReturnVisit,
+        BedID: params.BedID,
+        WardID: params.WardID,
+        CaseID: params.CaseID,
+        SubmitDoctor: params.SubmitDoctor,
+        Department: params.Department,
+        Device: params.Device,
+        Fee: params.Fee,
+        FeeType: params.FeeType,
+        ChiefComplaint: params.ChiefComplaint,
+        Test: params.Test,
+        Advice: params.Advice,
+        InpatientID: params.InpatientID,
+        OutpatientID: params.OutpatientID,
+        Others: params.Others,
+        Await1: params.Await1,
+        Await2: params.Await2,
+        Await3: params.Await3,
+        Biopsy: params.Biopsy,
+        Ctology: params.Ctology,
+        Pathology: params.Pathology,
+        ExaminingPhysician: params.ExaminingPhysician,
+        ClinicalDiagnosis: params.ClinicalDiagnosis,
+        CheckContent: params.CheckContent,
+        CheckDiagnosis: params.CheckDiagnosis,
+        Surgeon: params.Surgeon,
+        Assistant: params.Assistant,
+        Intern: params.Intern,
+        ScrubNurse: params.ScrubNurse,
+        Recorder: params.Recorder,
+        InstrumentPhysician: params.InstrumentPhysician,
+        Anesthetist: params.Anesthetist,
+        AnestheticType: params.AnestheticType,
+        PreoperativeDiagnosis: params.PreoperativeDiagnosis,
+        OperatedDiagnosis: params.OperatedDiagnosis,
+        SurgeryDescription: params.SurgeryDescription,
+        OperationTime: params.OperationTime,
+        OprationName: params.OprationName,
+    }
+    co(function* () {
+        try {
+            // 更新 DefaultVal
+            // 先查询是否存在，不存在插入
+            var defaultVal = yield __getCaseDefaultVal(params['EndoType'])
+            var result = true;
+            if (defaultVal.length == 0) {
+                defaultValObj["EndoType"] = params['EndoType'];
+                result = yield __insertCaseDefaultVal(defaultValObj);
+                
+            } else {
+                result = yield __updateCaseDefaultVal(params["EndoType"], defaultValObj);
+            }
+            if (result) {
+                res.send(responseTool({}, repSuccess, repSuccessMsg))
+            } else {
+                res.send(responseTool({}, repError, repParamsErrorMsg))
+            }
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
         }
     })
 });
@@ -1505,6 +1639,25 @@ function __getCaseTemplate(endoType) {
     })
 }
 
+// 获取病例默认值
+function __getCaseDefaultVal(endoType) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = ""
+        if (endoType == null || endoType === '') {
+            sqlStr = `select * from dbo.DefaultVal;`
+        } else {
+            sqlStr = `select * from dbo.DefaultVal where EndoType=${endoType};`
+        }
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(result['recordset'])
+        });
+    })
+}
+
 // 新增病例基本信息
 function __addCase(caseObj) {
     return new Promise((resolve, reject) => {
@@ -1524,7 +1677,7 @@ function __addCase(caseObj) {
                 valueStr += caseObj[key] + ","
             }
         }
-        valueStr = valueStr.substr(0, valueStr.length - 1);
+        valueStr = valueStr.substring(0, valueStr.length - 1);
         var sqlStr = `insert into dbo.record_base(${Object.keys(caseObj).join(',')}) output inserted.ID values(${valueStr});`
         db.sql(sqlStr, function (err, result) {
             if (err) {
@@ -1554,7 +1707,7 @@ function __addCaseCheck(ID, caseCheckObj) {
                 valueStr += caseCheckObj[key] + ","
             }
         }
-        valueStr = valueStr.substr(0, valueStr.length - 1);
+        valueStr = valueStr.substring(0, valueStr.length - 1);
         var sqlStr = `insert into dbo.record_endoscopy_check(${Object.keys(caseCheckObj).join(',')}) values(${valueStr});`
         db.sql(sqlStr, function (err, result) {
             if (err) {
@@ -1565,6 +1718,32 @@ function __addCaseCheck(ID, caseCheckObj) {
         });
     })
 }
+
+// 新增病例默认值
+function __insertCaseDefaultVal(defaultValObj) {
+    return new Promise((resolve, reject) => {
+        var valueStr = ""
+        for (key in defaultValObj) {
+            if (defaultValObj[key] == null) {
+                valueStr += `'',`
+            } else if (typeof defaultValObj[key] === 'string') {
+                valueStr += "'" + defaultValObj[key] + "',"
+            } else {
+                valueStr += defaultValObj[key] + ","
+            }
+        }
+        valueStr = valueStr.substring(0, valueStr.length - 1);
+        var sqlStr = `insert into dbo.DefaultVal(${Object.keys(defaultValObj).join(',')}) values(${valueStr});`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
+
 // 更新病例基本信息
 function __updateCase(ID, caseObj) {
     return new Promise((resolve, reject) => {
@@ -1602,7 +1781,7 @@ function __updateCaseCheck(ID, caseCheckObj) {
                 valueStr += `${key}=${caseCheckObj[key]},`
             }
         }
-        valueStr = valueStr.substr(0, valueStr.length - 1);
+        valueStr = valueStr.substring(0, valueStr.length - 1);
         var sqlStr = `update dbo.record_endoscopy_check set ${valueStr} where ID=${ID};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
@@ -1739,7 +1918,7 @@ function __updateCaseHospital(ID, caseHospitalObj) {
                 valueStr += `${key}=${caseHospitalObj[key]},`
             }
         }
-        valueStr = valueStr.substr(0, valueStr.length - 1);
+        valueStr = valueStr.substring(0, valueStr.length - 1);
         var sqlStr = `update dbo.reginfo set ${valueStr} where ID=${ID};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
@@ -1799,6 +1978,31 @@ function __updateImageSelect(oldImageIDs, newImageIDs) {
 function __updateCaseInfoTemplate(caseID, template) {
     return new Promise((resolve, reject) => {
         var sqlStr = `update dbo.record_base set ReportStyle='${template}' where ID=${caseID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
+
+// 更新病例默认值
+function __updateCaseDefaultVal(EndoType, defaultValObj) {
+    return new Promise((resolve, reject) => {
+        var valueStr = ""
+        for (key in defaultValObj) {
+            if (defaultValObj[key] == null) {
+                continue
+            } else if (typeof defaultValObj[key] === 'string') {
+                valueStr += `${key}='${defaultValObj[key]}',`
+            } else {
+                valueStr += `${key}=${defaultValObj[key]},`
+            }
+        }
+        valueStr = valueStr.substring(0, valueStr.length - 1);
+        var sqlStr = `update dbo.DefaultVal set ${valueStr} where EndoType=${EndoType};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 reject(err)
@@ -1957,7 +2161,7 @@ function __logRecord(logObj) {
                 valueStr += sqlLogObj[key] + ","
             }
         }
-        valueStr = valueStr.substr(0, valueStr.length - 1);
+        valueStr = valueStr.substring(0, valueStr.length - 1);
         var sqlStr = `insert into dbo.log(${Object.keys(sqlLogObj).join(',')}) values(${valueStr});`
         db.sql(sqlStr, function (err, result) {
             if (err) {

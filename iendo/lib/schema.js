@@ -73,6 +73,68 @@ const caseSchema = function(type) {
     }
     return targetCaseSchema
 }
+const caseDefaultValueSchema = {
+    type: "object",
+    properties: {
+        Married: {type: "string", maxLength:10}, // 婚否
+        Sex: {type: "string", maxLength:10}, // 性别
+        Tel: {type: "string", maxLength:50}, // 电话
+        Address: {type: "string", maxLength:200}, // 住址
+        PatientNo: {type: "string", maxLength:20}, // 病人编号
+        CardID: {type: "string", maxLength:20}, // 身份证号
+        MedHistory: {type: "string", maxLength:300}, // 医疗病史
+        FamilyHistory: {type: "string", maxLength:300}, // 家族病史
+        Race: {type: "string", maxLength:32}, // 民族种族
+        Occupatior: {type: "string", maxLength:200}, // 职业
+        InsuranceID: {type: "string", maxLength:200}, // 社保卡ID
+        NativePlace: {type: "string", maxLength:100}, // 籍贯
+        PatientAge: {type: ["integer", "string"]}, // 患者年龄
+        AgeUnit: {type: "string", maxLength:10}, // 年龄单位
+        CaseNo: {type: "string", maxLength:20}, // 检查号
+        ReturnVisit: {type: ["boolean", "string"]}, // 初复诊
+        BedID: {type: "string", maxLength:10}, // 病床号
+        WardID: {type: "string", maxLength:20}, // 病区号
+        CaseID: {type: "string", maxLength:20}, // 病历号
+        SubmitDoctor: {type: "string", maxLength:20}, // 申请医生
+        Department: {type: "string", maxLength:20}, // 科室
+        Device: {type: "string", maxLength:20}, // 设备
+        Fee: {type: "string", maxLength:50}, // 收费
+        FeeType: {type: "string", maxLength:10}, // 收费类型
+        ChiefComplaint: {type: "string", maxLength:200}, // 主诉
+        Test: {type: "string", maxLength:200}, // 试验
+        Advice: {type: "string", maxLength:200}, // 建议
+        InpatientID: {type: "string", maxLength:20}, // 住院号
+        OutpatientID: {type: "string", maxLength:20}, // 门诊号
+        Others: {type: "string", maxLength:200}, // 其他
+        Await1: {type: "string", maxLength:200}, // 待定1
+        Await2: {type: "string", maxLength:200}, // 待定2
+        Await3: {type: "string", maxLength:200}, // 待定3
+        Biopsy: {type: "string", maxLength:200}, // 活检
+        Ctology: {type: "string", maxLength:200}, // 细胞学
+        Pathology: {type: "string", maxLength:200}, // 病理学
+        ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
+        ClinicalDiagnosis: {type: "string", maxLength: 300}, // 临床诊断
+        CheckContent: {type: "string"}, // 检查内容（镜检所见）
+        CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
+        Surgeon: {type: "string", maxLength: 20}, // 手术医生
+        Assistant: {type: "string", maxLength: 20}, // 助手
+        Intern: {type: "string", maxLength: 20}, // 实习医生
+        ScrubNurse: {type: "string", maxLength: 20}, // 洗手护士
+        Recorder: {type: "string", maxLength: 20}, // 记录者
+        InstrumentPhysician: {type: "string", maxLength: 20}, // 器械师
+        Anesthetist: {type: "string", maxLength: 20}, // 麻醉师
+        AnestheticType: {type: "string", maxLength: 100}, // 麻醉方法
+        PreoperativeDiagnosis: {type: "string", maxLength: 200}, // 术前诊断
+        OperatedDiagnosis: {type: "string", maxLength: 200}, // 术后诊断
+        SurgeryDescription: {type: "string"}, // 手术过程
+        OperationTime: {type: "string", maxLength: 100}, // 手术时间
+        OprationName: {type: "string", maxLength: 100}, // 手术名称
+        EndoType: {type: ["integer", "string"]}, // 工作站类型
+    },
+    required: ["EndoType"],
+    additionalProperties: false,
+    
+}
 const caseInfoDeleteSchema = {
     type: "object",
     properties: {
@@ -261,5 +323,6 @@ module.exports = {
     purviewSchema,
     addUserSchema,
     reportInfoSchema,
-    reportTemplateSchema
+    reportTemplateSchema,
+    caseDefaultValueSchema
 };
