@@ -1276,7 +1276,6 @@ router.get('/case/caseTemplate', function (req, res, next) {
  * @apiName reportInfo
  * @apiGroup 病例（Case）
  * @apiParam {int} ID 内部ID
- * @apiParam {string} EndoType 工作站类型
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {

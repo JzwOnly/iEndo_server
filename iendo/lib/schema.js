@@ -397,7 +397,6 @@ module.exports = {
     caseInfoDeleteSchema,
     purviewSchema,
     addUserSchema,
-    reportInfoSchema,
     reportTemplateSchema,
     caseDefaultValueSchema,
     checkDevice,
