@@ -1,0 +1,2 @@
+call node -v
+pause

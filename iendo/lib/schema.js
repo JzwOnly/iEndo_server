@@ -7,6 +7,67 @@ const validateJson = (schema, json) => {
         errors: ajv.errors
     };
 };
+const caselistSchema = {
+    type: "object",
+    properties: {
+        datetime: { type: "string" }, // 日期
+        EndoType: { type: "string" }, // 工作站类型
+        DeviceType: {type: "string"}, // 设备类型
+    },
+    required: ["EndoType", "DeviceType"],
+    additionalProperties: false,
+}
+const caseSearchSchema = {
+    type: "object",
+    properties: {
+        CheckDateStart: {type: "string"}, // 检查时间开始
+        CheckDateEnd: {type: "string"}, // 检查时间结束
+        CaseNo: {type: "string", maxLength:20}, // 检查号
+        ReturnVisit: {type: ["boolean", "string"]}, // 初复诊
+        Name: {type: "string", maxLength:50}, // 姓名
+        Sex: {type: "string", maxLength:10}, // 性别
+        PatientAgeStart: {type: ["integer", "string"]}, // 患者年龄开始
+        PatientAgeEnd: {type: ["integer", "string"]}, // 患者年龄结束
+        AgeUnit: {type: "string", maxLength:10}, // 年龄单位
+        Married: {type: "string", maxLength:10}, // 婚否
+        InpatientID: {type: "string", maxLength:20}, // 住院号
+        BedID: {type: "string", maxLength:10}, // 病床号
+        WardID: {type: "string", maxLength:20}, // 病区号
+        Department: {type: "string", maxLength:20}, // 科室
+        SubmitDoctor: {type: "string", maxLength:20}, // 申请医生
+        CaseID: {type: "string", maxLength:20}, // 病历号
+        InsuranceID: {type: "string", maxLength:200}, // 社保卡ID
+        Occupatior: {type: "string", maxLength:200}, // 职业
+        Device: {type: "string", maxLength:20}, // 设备
+        Advice: {type: "string", maxLength:200}, // 建议
+        EndoType: { type: "string" }, // 工作站类型
+        DeviceType: {type: "string"}, // 设备类型
+
+        // 检查表
+        ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
+        ClinicalDiagnosis: {type: "string", maxLength: 300}, // 临床诊断
+        CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
+        CheckContent: {type: "string"}, // 检查内容（镜检所见）
+
+        // 手术表
+        Surgeon: {type: "string", maxLength: 20}, // 手术医生
+        Assistant: {type: "string", maxLength: 20}, // 助手
+        Intern: {type: "string", maxLength: 20}, // 实习医生
+        ScrubNurse: {type: "string", maxLength: 20}, // 洗手护士
+        Recorder: {type: "string", maxLength: 20}, // 记录者
+        InstrumentPhysician: {type: "string", maxLength: 20}, // 器械师
+        Anesthetist: {type: "string", maxLength: 20}, // 麻醉师
+        AnestheticType: {type: "string", maxLength: 100}, // 麻醉方法
+        PreoperativeDiagnosis: {type: "string", maxLength: 200}, // 术前诊断
+        OperatedDiagnosis: {type: "string", maxLength: 200}, // 术后诊断
+        SurgeryDescription: {type: "string"}, // 手术过程
+        OperationTime: {type: "string", maxLength: 100}, // 手术时间
+        OperationName: {type: "string", maxLength: 100}, // 手术名称
+    },
+    required: ["EndoType", "DeviceType"],
+    additionalProperties: false,
+}
+
 const caseSchema = function(type) {
     var targetCaseSchema = {
         type: "object",
@@ -58,13 +119,30 @@ const caseSchema = function(type) {
             UserName: {type: "string", maxLength:50}, // 操作用户名
             UserID: {type: ["integer", "string"]}, // 用户名ID （用于记录log）
             EndoType: {type: ["integer", "string"]}, // 工作站类型
+            DeviceType: {type: ["integer", "string"]}, // 设备类型
+            // 检查表
             ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
             ClinicalDiagnosis: {type: "string", maxLength: 300}, // 临床诊断
             CheckContent: {type: "string"}, // 检查内容（镜检所见）
             CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
+
+            // 手术表
+            Surgeon: {type: "string", maxLength: 20}, // 手术医生
+            Assistant: {type: "string", maxLength: 20}, // 助手
+            Intern: {type: "string", maxLength: 20}, // 实习医生
+            ScrubNurse: {type: "string", maxLength: 20}, // 洗手护士
+            Recorder: {type: "string", maxLength: 20}, // 记录者
+            InstrumentPhysician: {type: "string", maxLength: 20}, // 器械师
+            Anesthetist: {type: "string", maxLength: 20}, // 麻醉师
+            AnestheticType: {type: "string", maxLength: 100}, // 麻醉方法
+            PreoperativeDiagnosis: {type: "string", maxLength: 200}, // 术前诊断
+            OperatedDiagnosis: {type: "string", maxLength: 200}, // 术后诊断
+            SurgeryDescription: {type: "string"}, // 手术过程
+            OperationTime: {type: "string", maxLength: 100}, // 手术时间
+            OperationName: {type: "string", maxLength: 100}, // 手术名称
         },
         // required: ["Name", "CaseNo", "UserName", "EndoType"],
-        required: ["Name", "UserName", "EndoType", "UserID"],
+        required: ["Name", "UserName", "EndoType", "DeviceType", "UserID"],
         additionalProperties: false,
     };
     if (type == 'update') {
@@ -112,10 +190,14 @@ const caseDefaultValueSchema = {
         Biopsy: {type: "string", maxLength:200}, // 活检
         Ctology: {type: "string", maxLength:200}, // 细胞学
         Pathology: {type: "string", maxLength:200}, // 病理学
+
+        // 检查表
         ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
         ClinicalDiagnosis: {type: "string", maxLength: 300}, // 临床诊断
         CheckContent: {type: "string"}, // 检查内容（镜检所见）
         CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
+
+        // 手术表
         Surgeon: {type: "string", maxLength: 20}, // 手术医生
         Assistant: {type: "string", maxLength: 20}, // 助手
         Intern: {type: "string", maxLength: 20}, // 实习医生
@@ -154,15 +236,6 @@ const caseInfoSchema = {
     required: ["ID"],
     additionalProperties: false,
 }
-const reportInfoSchema = {
-    type: "object",
-    properties: {
-        ID: {type: ["integer", "string"]}, // 内部id
-        EndoType: {type: ["integer", "string"]}, // 工作站类型
-    },
-    required: ["ID", "EndoType"],
-    additionalProperties: false,
-}
 const caseReportSearchSchema = {
     type: "object",
     properties: {
@@ -175,37 +248,7 @@ const caseReportSearchSchema = {
     required: ["Name"],
     additionalProperties: false,
 }
-const caseSearchSchema = {
-    type: "object",
-    properties: {
-        CheckDateStart: {type: "string"}, // 检查时间开始
-        CheckDateEnd: {type: "string"}, // 检查时间结束
-        CaseNo: {type: "string", maxLength:20}, // 检查号
-        ReturnVisit: {type: ["boolean", "string"]}, // 初复诊
-        Name: {type: "string", maxLength:50}, // 姓名
-        Sex: {type: "string", maxLength:10}, // 性别
-        PatientAgeStart: {type: ["integer", "string"]}, // 患者年龄开始
-        PatientAgeEnd: {type: ["integer", "string"]}, // 患者年龄结束
-        AgeUnit: {type: "string", maxLength:10}, // 年龄单位
-        Married: {type: "string", maxLength:10}, // 婚否
-        InpatientID: {type: "string", maxLength:20}, // 住院号
-        BedID: {type: "string", maxLength:10}, // 病床号
-        WardID: {type: "string", maxLength:20}, // 病区号
-        Department: {type: "string", maxLength:20}, // 科室
-        ExaminingPhysician: {type: "string", maxLength: 20}, // 检查医生
-        SubmitDoctor: {type: "string", maxLength:20}, // 申请医生
-        CaseID: {type: "string", maxLength:20}, // 病历号
-        InsuranceID: {type: "string", maxLength:200}, // 社保卡ID
-        Occupatior: {type: "string", maxLength:200}, // 职业
-        Device: {type: "string", maxLength:20}, // 设备
-        CheckContent: {type: "string"}, // 检查内容（镜检所见）
-        CheckDiagnosis: {type: "string", maxLength: 300}, // 镜检诊断
-        Advice: {type: "string", maxLength:200}, // 建议
-        EndoType: { type: "string" }, // 工作站类型
-    },
-    required: ["EndoType"],
-    additionalProperties: false,
-}
+
 const caseHospitalSchema = {
     type: "object",
     properties: {
@@ -311,8 +354,40 @@ const addUserSchema = {
     required: ["UserID", "Role", "UserName", "Password", "CanUSE"],
     additionalProperties: false,
 }
+
+const checkDevice = [0x07, 0x08, 0x09, 0x10]
+const surgeryDevice = [0x0B]
+// 检查表
+const checkObjParams = function(params) {
+    return {
+        ExaminingPhysician: params.ExaminingPhysician,
+        ClinicalDiagnosis: params.ClinicalDiagnosis,
+        CheckContent: params.CheckContent,
+        CheckDiagnosis: params.CheckDiagnosis,
+    }
+}
+// 手术表
+const surgeryObjParams = function(params) {
+    return {
+        Surgeon: params.Surgeon,
+        Assistant: params.Assistant,
+        Intern: params.Intern,
+        ScrubNurse: params.ScrubNurse,
+        Recorder: params.Recorder,
+        InstrumentPhysician: params.InstrumentPhysician,
+        Anesthetist: params.Anesthetist,
+        AnestheticType: params.AnestheticType,
+        PreoperativeDiagnosis: params.PreoperativeDiagnosis,
+        OperatedDiagnosis: params.OperatedDiagnosis,
+        SurgeryDescription: params.SurgeryDescription,
+        OperationTime: params.OperationTime,
+        OperationName: params.OperationName,
+    }
+}
+
 module.exports = {
     validateJson,
+    caselistSchema,
     caseSchema,
     caseInfoSchema,
     caseSearchSchema,
@@ -324,5 +399,9 @@ module.exports = {
     addUserSchema,
     reportInfoSchema,
     reportTemplateSchema,
-    caseDefaultValueSchema
+    caseDefaultValueSchema,
+    checkDevice,
+    surgeryDevice,
+    checkObjParams,
+    surgeryObjParams
 };

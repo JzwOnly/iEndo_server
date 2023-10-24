@@ -8,7 +8,7 @@ var path = require('path');
 var ini = require('ini');
 const multer = require('multer');
 const upload = multer({ dest: 'public/images/logo' })
-const { validateJson, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema, reportInfoSchema, reportTemplateSchema, caseDefaultValueSchema } = require('../lib/schema');
+const { checkObjParams, surgeryObjParams, checkDevice, surgeryDevice, validateJson, caselistSchema, caseSchema, caseInfoSchema, caseSearchSchema, caseHospitalSchema, caseReportSearchSchema, selectImagesSchema, caseInfoDeleteSchema, reportTemplateSchema, caseDefaultValueSchema } = require('../lib/schema');
 const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg, repParamsErrorMsg } = require('../lib/responseData');
 /* GET users listing. */
 
@@ -19,6 +19,7 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  * @apiName list
  * @apiGroup 病例（Case）
  * @apiParam {string} EndoType 工作站类型
+ * @apiParam {string} DeviceType 设备类型
  * @apiParam {string} [datetime]（YYYY-MM-DD） 日期
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
@@ -28,53 +29,51 @@ const { responseTool, repSuccess, repSuccessMsg, repError, repNoCaseInfoErrorMsg
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/list?datetime=2021-09-09
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/list', function (req, res, next) {
     try {
-        var param = req.query || req.params;
-        const caselistSchema = {
-            type: "object",
-            properties: {
-                datetime: { type: "string" }, // 日期
-                EndoType: { type: "string" }, // 工作站类型
-            },
-            required: ["EndoType"],
-            additionalProperties: false,
-        }
-        console.log(param)
-        const schemaResult = validateJson(caselistSchema, param)
+        var params = req.query || req.params;
+        const schemaResult = validateJson(caselistSchema, params)
         if (!schemaResult.result) {
             res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
             // res.status(400).json(schemaResult.errors)
             return;
         }
+        // 设备类型
+        var tableArr = ["dbo.record_base rb"]
+        var fieldArr = ["convert(varchar(100), CheckDate, 120) check_date, convert(varchar(100), RecordDate, 120) record_date, convert(varchar(100), UpdateTime, 120) update_time, rb.*"]
+        var conditionArr = []
+        if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
+            tableArr.push("dbo.record_endoscopy_check rec")
+            fieldArr.push("rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis")
+            conditionArr.push("rb.ID = rec.ID")
+        }
+        if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
+            tableArr.push("dbo.record_endoscopy_surgery res")
+            fieldArr.push("res.Surgeon, res.Assistant, res.Intern, res.ScrubNurse, res.Recorder, res.InstrumentPhysician, res.Anesthetist, res.AnestheticType, res.PreoperativeDiagnosis, res.OperatedDiagnosis, res.SurgeryDescription, res.OperationTime, res.OperationName")
+            conditionArr.push("rb.ID = res.ID")
+        }
         // 默认取当天时间
         // var datetime = 
         var nowDate = moment()
         var tomoDate = moment().add(1, "days")
-        if (param.hasOwnProperty('datetime')) {
-            console.log('时间是否合法', moment(param['datetime'], "YYYY-MM-DD").isValid())
-            if (!moment(param['datetime'], "YYYY-MM-DD").isValid()) {
+        if (params.hasOwnProperty('datetime')) {
+            console.log('时间是否合法', moment(params['datetime'], "YYYY-MM-DD").isValid())
+            if (!moment(params['datetime'], "YYYY-MM-DD").isValid()) {
                 res.send(responseTool({}, repError, repParamsErrorMsg));
                 return;
             }
-            nowDate = moment(param['datetime'], "YYYY-MM-DD");
-            tomoDate = moment(param['datetime'], "YYYY-MM-DD").add(1, "days");
+            nowDate = moment(params['datetime'], "YYYY-MM-DD");
+            tomoDate = moment(params['datetime'], "YYYY-MM-DD").add(1, "days");
         }
-        var sqlStr = `select 
-    convert(varchar(100), CheckDate, 120) check_date, 
-    convert(varchar(100), RecordDate, 120) record_date, 
-    convert(varchar(100), UpdateTime, 120) update_time, 
-    rb.*, 
-    rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis
-    from 
-    dbo.record_base rb, 
-    dbo.record_endoscopy_check rec 
-    where 
-    rb.RecordDate between '${nowDate.format("YYYY-MM-DD")}' and '${tomoDate.format("YYYY-MM-DD")}' 
-    and rb.ID = rec.ID and EndoType=${param.EndoType};`
+        var sqlStr = `select ${fieldArr.join(", ")} 
+        from ${tableArr.join(", ")} 
+        where 
+        rb.RecordDate between '${nowDate.format("YYYY-MM-DD")}' and '${tomoDate.format("YYYY-MM-DD")}'
+        and ${conditionArr.join(" and ")}
+        and EndoType=${params.EndoType};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 res.send(responseTool({}, repError, repParamsErrorMsg));
@@ -95,6 +94,7 @@ router.get('/case/list', function (req, res, next) {
  * @apiName search
  * @apiGroup 病例（Case）
  * @apiParam {string} EndoType 工作站类型
+ * @apiParam {string} DeviceType 设备类型
  * @apiParam {string} [CheckDateStart] 检查日期开始 （YYYY-MM-DD）
  * @apiParam {string} [CheckDateEnd] 检查日期结束 （YYYY-MM-DD）
  * @apiParam {string} [CaseNo] 检查号
@@ -109,15 +109,31 @@ router.get('/case/list', function (req, res, next) {
  * @apiParam {string} [BedID] 病床号
  * @apiParam {string} [WardID] 病区号
  * @apiParam {string} [Department] 科室
- * @apiParam {string} [ExaminingPhysician] 检查医生
  * @apiParam {string} [SubmitDoctor] 申请医生
  * @apiParam {string} [CaseID] 病历号
  * @apiParam {string} [InsuranceID] 社保卡ID
  * @apiParam {string} [Occupatior] 职业
  * @apiParam {string} [Device] 设备
+ * @apiParam {string} [Advice] 建议
+ * // 检查表
+ * @apiParam {string} [ExaminingPhysician] 检查医生
+ * @apiParam {string} [ClinicalDiagnosis] 临床诊断
  * @apiParam {string} [CheckContent] 检查内容（镜检所见）
  * @apiParam {string} [CheckDiagnosis] 镜检诊断
- * @apiParam {string} [Advice] 建议
+ * // 手术表
+ * @apiParam {string} [Surgeon] 手术医生
+ * @apiParam {string} [Assistant] 助手
+ * @apiParam {string} [Intern] 实习医生
+ * @apiParam {string} [ScrubNurse] 洗手护士
+ * @apiParam {string} [Recorder] 记录者
+ * @apiParam {string} [InstrumentPhysician] 器械师
+ * @apiParam {string} [Anesthetist] 麻醉师
+ * @apiParam {string} [AnestheticType] 麻醉方法
+ * @apiParam {string} [PreoperativeDiagnosis] 术前诊断
+ * @apiParam {string} [OperatedDiagnosis] 术后诊断
+ * @apiParam {string} [SurgeryDescription] 手术过程
+ * @apiParam {string} [OperationTime] 手术时间
+ * @apiParam {string} [OperationName] 手术名称
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -126,7 +142,7 @@ router.get('/case/list', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/search?CheckDateStart=2021-09-09&CheckDateEnd=2021-09-14
- * @apiVersion 1.0.3 
+ * @apiVersion 1.0.4 
 */
 // #endregion
 router.get('/case/search', function (req, res, next) {
@@ -137,6 +153,8 @@ router.get('/case/search', function (req, res, next) {
         // res.status(400).json(schemaResult.errors)
         return;
     }
+    var checkObj = checkObjParams(params)
+    var surgeryObj = surgeryObjParams(params)
     var caseSearchObj = {
         CheckDateStart: params.CheckDateStart,
         CheckDateEnd: params.CheckDateEnd,
@@ -152,17 +170,34 @@ router.get('/case/search', function (req, res, next) {
         BedID: params.BedID,
         WardID: params.WardID,
         Department: params.Department,
-        ExaminingPhysician: params.ExaminingPhysician,
         SubmitDoctor: params.SubmitDoctor,
         CaseID: params.CaseID,
         InsuranceID: params.InsuranceID,
         Occupatior: params.Occupatior,
         Device: params.Device,
-        CheckContent: params.CheckContent,
-        CheckDiagnosis: params.CheckDiagnosis,
         Advice: params.Advice,
+        // 检查表
+        ...checkObj,
+        // 手术表
+        ...surgeryObj,
     }
-    var condiStr = ""
+
+    var tableArr = ["dbo.record_base rb"]
+    var fieldArr = ["convert(varchar(100), CheckDate, 120) check_date, convert(varchar(100), RecordDate, 120) record_date, convert(varchar(100), UpdateTime, 120) update_time, rb.*"]
+    var conditionArr = []
+    var targetEndoScopy = null
+    if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
+        tableArr.push("dbo.record_endoscopy_check rec")
+        fieldArr.push("rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis")
+        conditionArr.push("rb.ID = rec.ID")
+        targetEndoScopy = checkObj
+    }
+    if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
+        tableArr.push("dbo.record_endoscopy_surgery res")
+        fieldArr.push("res.Surgeon, res.Assistant, res.Intern, res.ScrubNurse, res.Recorder, res.InstrumentPhysician, res.Anesthetist, res.AnestheticType, res.PreoperativeDiagnosis, res.OperatedDiagnosis, res.SurgeryDescription, res.OperationTime, res.OperationName")
+        conditionArr.push("rb.ID = res.ID")
+        targetEndoScopy = surgeryObj
+    }
     for (key in caseSearchObj) {
         if (caseSearchObj[key] == null) {
             continue
@@ -177,7 +212,7 @@ router.get('/case/search', function (req, res, next) {
                     res.send(responseTool({}, repError, "CheckDateStart is not vaild"));
                     return;
                 }
-                condiStr += `rb.CheckDate >= '${caseSearchObj[key]}' and `
+                conditionArr.push(`rb.CheckDate >= '${caseSearchObj[key]}'`)
             } else if (key == "CheckDateEnd") {
                 if (!moment(caseSearchObj[key], "YYYY-MM-DD").isValid()) {
                     res.send(responseTool({}, repError, "CheckDateEnd is not vaild"));
@@ -186,31 +221,31 @@ router.get('/case/search', function (req, res, next) {
                 // 结束时间包括当天的，所以需要往后推一天
                 var tomoDate = moment(caseSearchObj[key], "YYYY-MM-DD")
                 tomoDate = tomoDate.add(1, "days");
-                condiStr += `rb.CheckDate <= '${tomoDate.format('YYYY-MM-DD')}' and `
+                conditionArr.push(`rb.CheckDate <= '${tomoDate.format('YYYY-MM-DD')}'`)
             } else if (key == "PatientAgeStart") {
-                condiStr += `rb.patientAge >= ${caseSearchObj[key]} and `
+                conditionArr.push(`rb.patientAge >= ${caseSearchObj[key]}`)
             } else if (key == "PatientAgeEnd") {
-                condiStr += `rb.patientAge <= ${caseSearchObj[key]} and `
-            } else if (key == "ExaminingPhysician" || key == "CheckContent" || key == "CheckDiagnosis") {
+                conditionArr.push(`rb.patientAge <= ${caseSearchObj[key]}`)
+            } else if (Object.keys(checkObj).indexOf(key) != -1) {
                 // 处理 record_endoscopy_check 表 筛选条件
-                condiStr += `rec.${key} like '%${caseSearchObj[key]}%' and `
+                if (targetEndoScopy == checkObj) {
+                    conditionArr.push(`rec.${key} like '%${caseSearchObj[key]}%'`)
+                }
+            } else if (Object.keys(surgeryObj).indexOf(key) != -1) {
+                // 处理 record_endoscopy_surgery 表 筛选条件
+                if (targetEndoScopy == surgeryObj) {
+                    conditionArr.push(`res.${key} like '%${caseSearchObj[key]}%'`)
+                }
             } else {
                 // 处理 record_base 表 筛选条件
-                condiStr += `rb.${key} like '%${caseSearchObj[key]}%' and `
+                conditionArr.push(`rb.${key} like '%${caseSearchObj[key]}%'`)
             }
         }
     }
-    condiStr += "rb.ID = rec.ID"
-    var sqlStr = `select 
-    convert(varchar(100), CheckDate, 120) check_date, 
-    convert(varchar(100), RecordDate, 120) record_date, 
-    convert(varchar(100), UpdateTime, 120) update_time, 
-    rb.*, 
-    rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis
-    from 
-    dbo.record_base rb, 
-    dbo.record_endoscopy_check rec 
-    where ${condiStr} and EndoType=${params.EndoType};`
+    var sqlStr = `select ${fieldArr.join(", ")}
+    from ${tableArr.join(", ")}
+    where ${conditionArr.join(" and ")}
+    and EndoType=${params.EndoType};`
     db.sql(sqlStr, function (err, result) {
         if (err) {
             res.send(responseTool({}, repError, repParamsErrorMsg));
@@ -236,8 +271,10 @@ router.get('/case/search', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/listDicts
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
+
+
 // #endregion
 router.get('/case/listDicts', function (req, res, next) {
     co(function* () {
@@ -263,6 +300,7 @@ router.get('/case/listDicts', function (req, res, next) {
  * @apiParam {string} UserName 操作员用户名
  * @apiParam {string} UserID 用户ID
  * @apiParam {int} EndoType 工作站类型
+ * @apiParam {string} DeviceType 设备类型
  * @apiParam {string} [Married] 婚否 （已婚，未婚）
  * @apiParam {string} [Sex] 性别 （男，女）
  * @apiParam {string} [Tel] 电话
@@ -303,10 +341,25 @@ router.get('/case/listDicts', function (req, res, next) {
  * @apiParam {string} [Biopsy] 活检
  * @apiParam {string} [Ctology] 细胞学
  * @apiParam {string} [Pathology] 病理学
+ * // 检查表
  * @apiParam {string} [ExaminingPhysician] 检查医生
  * @apiParam {string} [ClinicalDiagnosis] 临床诊断
  * @apiParam {string} [CheckContent] 检查内容（镜检所见）
  * @apiParam {string} [CheckDiagnosis] 镜检诊断
+ * // 手术表
+ * @apiParam {string} [Surgeon] 手术医生
+ * @apiParam {string} [Assistant] 助手
+ * @apiParam {string} [Intern] 实习医生
+ * @apiParam {string} [ScrubNurse] 洗手护士
+ * @apiParam {string} [Recorder] 记录者
+ * @apiParam {string} [InstrumentPhysician] 器械师
+ * @apiParam {string} [Anesthetist] 麻醉师
+ * @apiParam {string} [AnestheticType] 麻醉方法
+ * @apiParam {string} [PreoperativeDiagnosis] 术前诊断
+ * @apiParam {string} [OperatedDiagnosis] 术后诊断
+ * @apiParam {string} [SurgeryDescription] 手术过程
+ * @apiParam {string} [OperationTime] 手术时间
+ * @apiParam {string} [OperationName] 手术名称
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -315,13 +368,13 @@ router.get('/case/listDicts', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/add
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/add', function (req, res, next) {
     var params = req.body;
     // 获取新增病例的
-    console.log(params)
+    // console.log(params)
     const schemaResult = validateJson(caseSchema('add'), params)
     if (!schemaResult.result) {
         res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
@@ -335,7 +388,6 @@ router.post('/case/add', function (req, res, next) {
     }
 
     var caseObj = {
-        // RecordType: "endoscopy_check",
         PatientID: 0,
         Name: params.Name,
         Married: params.Married,
@@ -355,7 +407,6 @@ router.post('/case/add', function (req, res, next) {
         DOB: params.DOB,
         PatientAge: params.PatientAge,
         AgeUnit: params.AgeUnit,
-        // CaseNo: params.CaseNo,
         ReturnVisit: params.ReturnVisit,
         BedID: params.BedID,
         WardID: params.WardID,
@@ -382,24 +433,22 @@ router.post('/case/add', function (req, res, next) {
         UserName: params.UserName,
         EndoType: params.EndoType,
     }
-    // 判断工作站类型
-    const inEndo = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-    const outEndo = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
-    if (inEndo.indexOf(Number(params["EndoType"]))) {
+
+    if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
         caseObj["RecordType"] = "endoscopy_check";
-    } else if (outEndo.indexOf(Number(params["EndoType"]))) {
+    } else if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
         caseObj["RecordType"] = "endoscopy_surgery";
     }
     // 添加年龄单位默认值
     if (params["AgeUnit"] == "" || params["AgeUnit"] == null) {
         caseObj["AgeUnit"] = "岁"
     }
-    var caseCheckObj = {
-        ExaminingPhysician: params.ExaminingPhysician,
-        ClinicalDiagnosis: params.ClinicalDiagnosis,
-        CheckContent: params.CheckContent,
-        CheckDiagnosis: params.CheckDiagnosis
-    }
+    
+    // 检查表
+    var checkObj = checkObjParams(params)
+    // 手术表
+    var surgeryObj = surgeryObjParams(params)
+
     co(function* () {
         try {
             // 先判断是否有权限
@@ -419,7 +468,7 @@ router.post('/case/add', function (req, res, next) {
                 caseNo = __getNextCaseNo(caseNo, fcci)
                 exist = yield __checkCaseNo(caseNo)
             }
-            var responseMsg = repSuccessMsg;
+            var responseMsg = "";
             if (caseNo.length > 12) {
                 caseNo = moment().format('YYYY') + '001';
                 responseMsg = "检查号已超限，将重新生成新的检查号";
@@ -430,12 +479,18 @@ router.post('/case/add', function (req, res, next) {
             if (ID == null) {
                 res.send(responseTool({}, repError, repParamsErrorMsg))
             } else {
-                // 新增 record_endoscopy_check
-                const result = yield __addCaseCheck(ID, caseCheckObj);
+                var result = true;
+                if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
+                    // 新增 record_endoscopy_check
+                    result = yield __addCaseCheck(ID, checkObj);
+                } else if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
+                    // 新增 record_endoscopy_surgery
+                    result = yield __addCaseSurgery(ID, surgeryObj);
+                }
                 // 插入记录
                 yield __logRecord(generateLogObj(params.UserID, params.UserName, "新增病例", `病例ID: ${ID}`, params.EndoType))
                 if (result) {
-                    res.send(responseTool(responseMsg?{ "ID": ID, "msg":responseMsg}: {"ID": ID}, repSuccess, repSuccessMsg))
+                    res.send(responseTool({ "ID": ID, "msg": responseMsg }, repSuccess, repSuccessMsg))
                 } else {
                     res.send(responseTool({}, repError, repParamsErrorMsg))
                 }
@@ -457,6 +512,7 @@ router.post('/case/add', function (req, res, next) {
  * @apiParam {string} CaseNo 病历编号
  * @apiParam {string} UserName 操作员用户名
  * @apiParam {int} EndoType 工作站类型
+ * @apiParam {string} DeviceType 设备类型
  * @apiParam {string} UserID 用户ID
  * @apiParam {string} [Name] 姓名
  * @apiParam {string} [Married] 婚否 （已婚，未婚）
@@ -499,10 +555,25 @@ router.post('/case/add', function (req, res, next) {
  * @apiParam {string} [Biopsy] 活检
  * @apiParam {string} [Ctology] 细胞学
  * @apiParam {string} [Pathology] 病理学
+ * // 检查表
  * @apiParam {string} [ExaminingPhysician] 检查医生
  * @apiParam {string} [ClinicalDiagnosis] 临床诊断
  * @apiParam {string} [CheckContent] 检查内容（镜检所见）
  * @apiParam {string} [CheckDiagnosis] 镜检诊断
+ * // 手术表
+ * @apiParam {string} [Surgeon] 手术医生
+ * @apiParam {string} [Assistant] 助手
+ * @apiParam {string} [Intern] 实习医生
+ * @apiParam {string} [ScrubNurse] 洗手护士
+ * @apiParam {string} [Recorder] 记录者
+ * @apiParam {string} [InstrumentPhysician] 器械师
+ * @apiParam {string} [Anesthetist] 麻醉师
+ * @apiParam {string} [AnestheticType] 麻醉方法
+ * @apiParam {string} [PreoperativeDiagnosis] 术前诊断
+ * @apiParam {string} [OperatedDiagnosis] 术后诊断
+ * @apiParam {string} [SurgeryDescription] 手术过程
+ * @apiParam {string} [OperationTime] 手术时间
+ * @apiParam {string} [OperationName] 手术名称
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
  * {
@@ -511,7 +582,7 @@ router.post('/case/add', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/update
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/update', function (req, res, next) {
@@ -527,6 +598,12 @@ router.post('/case/update', function (req, res, next) {
         res.send(responseTool({}, repError, "年龄必须小于255"))
         return;
     }
+
+    // 检查表
+    var checkObj = checkObjParams(params)
+    // 手术表
+    var surgeryObj = surgeryObjParams(params)
+
     var caseObj = {
         PatientID: 0,
         Name: params.Name,
@@ -574,21 +651,13 @@ router.post('/case/update', function (req, res, next) {
         UserName: params.UserName,
         EndoType: params.EndoType,
     }
-    // 判断工作站类型
-    const inEndo = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-    const outEndo = [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
-    if (inEndo.indexOf(Number(params["EndoType"]))) {
+
+    if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
         caseObj["RecordType"] = "endoscopy_check";
-    } else if (outEndo.indexOf(Number(params["EndoType"]))) {
+    } else if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
         caseObj["RecordType"] = "endoscopy_surgery";
     }
 
-    var caseCheckObj = {
-        ExaminingPhysician: params.ExaminingPhysician,
-        ClinicalDiagnosis: params.ClinicalDiagnosis,
-        CheckContent: params.CheckContent,
-        CheckDiagnosis: params.CheckDiagnosis
-    }
     co(function* () {
         try {
             // 先判断是否有权限
@@ -597,21 +666,24 @@ router.post('/case/update', function (req, res, next) {
                 res.send(responseTool({}, repError, "当前账号无操作权限"))
                 return;
             }
-            var responseMsg = null;
+            var responseMsg = "";
             if (caseObj["CaseNo"].length > 12) {
                 caseObj["CaseNo"] = moment().format('YYYY') + '001';
                 responseMsg = "检查号已超限，将重新生成新的检查号";
             }
-            
+
             // 更新 record_base
             yield __updateCase(params["ID"], caseObj);
-            if (params.ExaminingPhysician != null || params.ClinicalDiagnosis != null || params.CheckContent != null || params.CheckDiagnosis != null) {
+            if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
                 // 更新 record_endoscopy_check
-                yield __updateCaseCheck(params["ID"], caseCheckObj)
+                yield __updateCaseCheck(params["ID"], checkObj)
+            } else if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
+                // 更新 record_endoscopy_surgery
+                yield __updateCaseSurgery(params["ID"], surgeryObj);
             }
             // 插入记录
             yield __logRecord(generateLogObj(params.UserID, params.UserName, "修改病例", `病例ID: ${params["ID"]}`, params.EndoType))
-            res.send(responseTool(responseMsg?{"msg":responseMsg}:{}, repSuccess, repSuccessMsg))
+            res.send(responseTool({ "msg": responseMsg }, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
@@ -637,7 +709,7 @@ router.post('/case/update', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/delete?ID=10
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/delete', function (req, res, next) {
@@ -685,7 +757,7 @@ router.post('/case/delete', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseInfo?ID=10
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/caseInfo', function (req, res, next) {
@@ -699,16 +771,24 @@ router.get('/case/caseInfo', function (req, res, next) {
     co(function* () {
         try {
             // 查询病例信息
-            var caseInfo = yield __getCaseInfo(params["ID"]);
-            if (caseInfo == null) {
+            var caseBaseInfo = yield __getCaseBaseInfo(params["ID"])
+            if (caseBaseInfo == null) {
                 res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
                 return;
             }
+            var endoscopy = caseBaseInfo["RecordType"]
+            var endoscopyInfo = yield __getCaseEndoScopy(`record_${endoscopy}`, params["ID"])
+            if (endoscopyInfo == null) {
+                res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
+                return;
+            }
+            delete endoscopyInfo["ID"]
             // // 查询图片和视频数量
             let count = yield __getImagesAndVideosCount(params["ID"]);
             var data = {
                 ...count,
-                ...caseInfo
+                ...caseBaseInfo,
+                ...endoscopyInfo
             }
             res.send(responseTool(data, repSuccess, repSuccessMsg))
         } catch (error) {
@@ -733,7 +813,7 @@ router.get('/case/caseInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseimages?ID=10
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/caseImages', function (req, res, next) {
@@ -772,7 +852,7 @@ router.get('/case/caseImages', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/casevideos?ID=10
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/casevideos', function (req, res, next) {
@@ -818,7 +898,7 @@ router.get('/case/casevideos', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/hospitalInfo
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/hospitalInfo', function (req, res, next) {
@@ -863,7 +943,7 @@ router.get('/case/hospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/updateHospitalInfo
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/updateHospitalInfo', function (req, res, next) {
@@ -912,7 +992,7 @@ router.post('/case/updateHospitalInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/uploadHospitalLogo
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, res, next) {
@@ -970,7 +1050,7 @@ router.post('/case/uploadHospitalLogo', upload.single('logo'), function (req, re
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/report.aspx?Name=xxx&Sex=xx
- * @apiVersion 1.0.3 
+ * @apiVersion 1.0.4 
 */
 // #endregion
 router.post('/report.aspx', function (req, res, next) {
@@ -1044,7 +1124,7 @@ router.post('/report.aspx', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/selectImages
- * @apiVersion 1.0.3 
+ * @apiVersion 1.0.4 
 */
 // #endregion
 router.post('/report/selectImages', function (req, res, next) {
@@ -1092,7 +1172,7 @@ router.post('/report/selectImages', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/reportExists
- * @apiVersion 1.0.3 
+ * @apiVersion 1.0.4 
 */
 // #endregion
 router.get('/report/reportExists', function (req, res, next) {
@@ -1143,7 +1223,7 @@ router.get('/report/reportExists', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/serverStatus
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/serverStatus', function (req, res, next) {
@@ -1173,7 +1253,7 @@ router.get('/case/serverStatus', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/caseTemplate
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/caseTemplate', function (req, res, next) {
@@ -1205,12 +1285,12 @@ router.get('/case/caseTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportInfo?ID=10
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/reportInfo', function (req, res, next) {
     var params = req.query || req.params
-    const schemaResult = validateJson(reportInfoSchema, params)
+    const schemaResult = validateJson(caseInfoSchema, params)
     if (!schemaResult.result) {
         res.send(responseTool({}, repError, JSON.stringify(schemaResult.errors)))
         // res.status(400).json(schemaResult.errors)
@@ -1219,15 +1299,28 @@ router.get('/case/reportInfo', function (req, res, next) {
     co(function* () {
         try {
             // 查询病例信息
-            var caseInfo = yield __getCaseInfo(params["ID"]);
+            var caseBaseInfo = yield __getCaseBaseInfo(params["ID"])
+            if (caseBaseInfo == null) {
+                res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
+                return;
+            }
+            var endoscopy = caseBaseInfo["RecordType"]
+            var EndoType = caseBaseInfo["EndoType"]
+            var endoscopyInfo = yield __getCaseEndoScopy(`record_${endoscopy}`, params["ID"])
+            if (endoscopyInfo == null) {
+                res.send(responseTool({}, repError, repNoCaseInfoErrorMsg))
+                return;
+            }
+            delete endoscopyInfo["ID"]
             // 查询图片和视频数量
             let count = yield __getImagesAndVideosCount(params["ID"]);
-            caseInfo = {
+            var caseInfo = {
                 ...count,
-                ...caseInfo
+                ...caseBaseInfo,
+                ...endoscopyInfo,
             }
             // 查询医院信息
-            var hospitalInfo = yield __getHospitalInfo(params['EndoType']);
+            var hospitalInfo = yield __getHospitalInfo(EndoType);
             // 查询图片
             let images = yield __getImages(params["ID"]);
             var config = ini.parse(fs.readFileSync('././deviceConfig.ini', 'utf-8'));
@@ -1268,7 +1361,7 @@ router.get('/case/reportInfo', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportTemplate
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/reportTemplate', function (req, res, next) {
@@ -1292,7 +1385,7 @@ router.get('/case/reportTemplate', function (req, res, next) {
  * @apiDescription 保存报告模板
  * @apiName saveCaseTemplate
  * @apiGroup 病例（Case）
- * @apiParam {string} CaseID 病例IDT
+ * @apiParam {string} CaseID 病例ID
  * @apiParam {string} Template 模板名称
  * @apiSuccess {json} result
  * @apiSuccessExample {json} Success-Response:
@@ -1302,7 +1395,7 @@ router.get('/case/reportTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/saveCaseTemplate
- * @apiVersion 1.0.3 
+ * @apiVersion 1.0.4 
 */
 // #endregion
 router.post('/report/saveCaseTemplate', function (req, res, next) {
@@ -1340,7 +1433,7 @@ router.post('/report/saveCaseTemplate', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/reportSketchImage
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/reportSketchImage', function (req, res, next) {
@@ -1373,7 +1466,7 @@ router.get('/case/reportSketchImage', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/queryCaseDefaultValue
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.get('/case/queryCaseDefaultValue', function (req, res, next) {
@@ -1403,7 +1496,7 @@ router.get('/case/queryCaseDefaultValue', function (req, res, next) {
  *      "msg": ""
  * }
  * @apiSampleRequest http://localhost:7001/case/updateCaseDefaultValue
- * @apiVersion 1.0.3
+ * @apiVersion 1.0.4
  */
 // #endregion
 router.post('/case/updateCaseDefaultValue', function (req, res, next) {
@@ -1477,7 +1570,7 @@ router.post('/case/updateCaseDefaultValue', function (req, res, next) {
             if (defaultVal.length == 0) {
                 defaultValObj["EndoType"] = params['EndoType'];
                 result = yield __insertCaseDefaultVal(defaultValObj);
-                
+
             } else {
                 result = yield __updateCaseDefaultVal(params["EndoType"], defaultValObj);
             }
@@ -1486,6 +1579,34 @@ router.post('/case/updateCaseDefaultValue', function (req, res, next) {
             } else {
                 res.send(responseTool({}, repError, repParamsErrorMsg))
             }
+        } catch (error) {
+            res.send(responseTool({}, repError, repParamsErrorMsg))
+        }
+    })
+});
+
+// #region 查询设备上所有科室（EndoType）
+/**
+ * @api {get} /case/allEndoTypes 3.4 查询设备上所有科室（EndoType）
+ * @apiDescription 查询设备上所有科室（EndoType）
+ * @apiName allEndoTypes
+ * @apiGroup 病例（Case）
+ * @apiSuccess {json} result
+ * @apiSuccessExample {json} Success-Response:
+ * {
+ *      "code": 0,
+ *      "data": [{case}],
+ *      "msg": ""
+ * }
+ * @apiSampleRequest http://localhost:7001/case/allEndoTypes
+ * @apiVersion 1.0.4
+ */
+// #endregion
+router.get('/case/allEndoTypes', function (req, res, next) {
+    co(function* () {
+        try {
+            var endotypes = yield __getEndoTypes()
+            res.send(responseTool(endotypes, repSuccess, repSuccessMsg))
         } catch (error) {
             res.send(responseTool({}, repError, repParamsErrorMsg))
         }
@@ -1694,21 +1815,47 @@ function __addCase(caseObj) {
     })
 }
 // 新增诊断信息
-function __addCaseCheck(ID, caseCheckObj) {
+function __addCaseCheck(ID, checkObj) {
     return new Promise((resolve, reject) => {
-        caseCheckObj["ID"] = ID
+        checkObj["ID"] = ID
         var valueStr = ""
-        for (key in caseCheckObj) {
-            if (caseCheckObj[key] == null) {
+        for (key in checkObj) {
+            if (checkObj[key] == null) {
                 valueStr += `'',`
-            } else if (typeof caseCheckObj[key] === 'string') {
-                valueStr += "'" + caseCheckObj[key] + "',"
+            } else if (typeof checkObj[key] === 'string') {
+                valueStr += "'" + checkObj[key] + "',"
             } else {
-                valueStr += caseCheckObj[key] + ","
+                valueStr += checkObj[key] + ","
             }
         }
         valueStr = valueStr.substring(0, valueStr.length - 1);
-        var sqlStr = `insert into dbo.record_endoscopy_check(${Object.keys(caseCheckObj).join(',')}) values(${valueStr});`
+        var sqlStr = `insert into dbo.record_endoscopy_check(${Object.keys(checkObj).join(',')}) values(${valueStr});`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
+
+// 新增手术信息
+function __addCaseSurgery(ID, surgeryObj) {
+    return new Promise((resolve, reject) => {
+        surgeryObj["ID"] = ID
+        var valueStr = ""
+        for (key in surgeryObj) {
+            if (surgeryObj[key] == null) {
+                valueStr += `'',`
+            } else if (typeof surgeryObj[key] === 'string') {
+                valueStr += "'" + surgeryObj[key] + "',"
+            } else {
+                valueStr += surgeryObj[key] + ","
+            }
+        }
+        valueStr = valueStr.substring(0, valueStr.length - 1);
+        var sqlStr = `insert into dbo.record_endoscopy_surgery(${Object.keys(surgeryObj).join(',')}) values(${valueStr});`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 reject(err)
@@ -1769,16 +1916,16 @@ function __updateCase(ID, caseObj) {
     })
 }
 // 更新病例诊断信息
-function __updateCaseCheck(ID, caseCheckObj) {
+function __updateCaseCheck(ID, checkObj) {
     return new Promise((resolve, reject) => {
         var valueStr = ""
-        for (key in caseCheckObj) {
-            if (caseCheckObj[key] == null) {
+        for (key in checkObj) {
+            if (checkObj[key] == null) {
                 continue
-            } else if (typeof caseCheckObj[key] === 'string') {
-                valueStr += `${key}='${caseCheckObj[key]}',`
+            } else if (typeof checkObj[key] === 'string') {
+                valueStr += `${key}='${checkObj[key]}',`
             } else {
-                valueStr += `${key}=${caseCheckObj[key]},`
+                valueStr += `${key}=${checkObj[key]},`
             }
         }
         valueStr = valueStr.substring(0, valueStr.length - 1);
@@ -1792,6 +1939,31 @@ function __updateCaseCheck(ID, caseCheckObj) {
         });
     })
 }
+// 更新病例手术信息
+function __updateCaseSurgery(ID, surgeryObj) {
+    return new Promise((resolve, reject) => {
+        var valueStr = ""
+        for (key in surgeryObj) {
+            if (surgeryObj[key] == null) {
+                continue
+            } else if (typeof surgeryObj[key] === 'string') {
+                valueStr += `${key}='${surgeryObj[key]}',`
+            } else {
+                valueStr += `${key}=${surgeryObj[key]},`
+            }
+        }
+        valueStr = valueStr.substring(0, valueStr.length - 1);
+        var sqlStr = `update dbo.record_endoscopy_surgery set ${valueStr} where ID=${ID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(true)
+        });
+    })
+}
+
 // 删除病例基本信息
 function __deleteCaseByID(ID) {
     return new Promise((resolve, reject) => {
@@ -1818,19 +1990,68 @@ function __deleteCaseCheckByID(ID) {
         });
     })
 }
-// 获取病例详情
-function __getCaseInfo(caseID) {
+// 获取病历基本信息
+function __getCaseBaseInfo(ID) {
     return new Promise((resolve, reject) => {
         var sqlStr = `select 
         convert(varchar(100), CheckDate, 120) check_date, 
         convert(varchar(100), RecordDate, 120) record_date, 
         convert(varchar(100), UpdateTime, 120) update_time, 
+        rb.* from dbo.record_base rb where rb.ID=${ID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            if (result['recordset'].length > 0) {
+                resolve(result['recordset'][0])
+            } else {
+                resolve(null)
+            }
+        });
+    })
+}
+// 获取病历额外信息（检查表、手术表）
+function __getCaseEndoScopy(table, ID) {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from ${table} where ID=${ID};`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            if (result['recordset'].length > 0) {
+                resolve(result['recordset'][0])
+            } else {
+                resolve(null)
+            }
+        });
+    })
+}
+// 获取病例详情
+function __getCaseInfo(params) {
+    return new Promise((resolve, reject) => {
+        var tableStr = ""
+        var fieldStr = ""
+        var condisionStr = ""
+        if (checkDevice.indexOf(Number(params["DeviceType"])) != -1) {
+            tableStr = "dbo.record_base rb, dbo.record_endoscopy_check rec"
+            fieldStr = Object.keys(checkObjParams(params)).filter((value)=>value!="ID").map((value)=>`rec.${value}`).join(", ")
+            condisionStr = "rec.ID=rb.ID"
+        } else if (surgeryDevice.indexOf(Number(params["DeviceType"])) != -1) {
+            tableStr = "dbo.record_base rb, dbo.record_endoscopy_surgery res"
+            fieldStr = Object.keys(surgeryObjParams(params)).filter((value)=>value!="ID").map((value)=>`res.${value}`).join(", ")
+            condisionStr = "res.ID=rb.ID"
+        }
+        var sqlStr = `select 
+        convert(varchar(100), CheckDate, 120) check_date, 
+        convert(varchar(100), RecordDate, 120) record_date, 
+        convert(varchar(100), UpdateTime, 120) update_time, 
         rb.*,
-        rec.ExaminingPhysician, rec.ClinicalDiagnosis, rec.CheckContent, rec.CheckDiagnosis 
+        ${fieldStr} 
         from 
-        dbo.record_base rb, 
-        dbo.record_endoscopy_check rec  
-        where rb.ID=${caseID} and rec.ID=rb.ID;`
+        ${tableStr}
+        where rb.ID=${params["ID"]} and ${condisionStr};`
         db.sql(sqlStr, function (err, result) {
             if (err) {
                 reject(err)
@@ -2136,6 +2357,18 @@ function __getReportUrlWith(CaseID) {
             } else {
                 resolve(null)
             }
+        });
+    })
+}
+function __getEndoTypes() {
+    return new Promise((resolve, reject) => {
+        var sqlStr = `select * from dbo.endo_type;`
+        db.sql(sqlStr, function (err, result) {
+            if (err) {
+                reject(err)
+                return
+            }
+            resolve(result['recordset'])
         });
     })
 }
